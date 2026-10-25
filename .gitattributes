@@ -1,0 +1,20 @@
+# 统一换行符,避免 Windows/macOS 队友互相看到满屏 diff
+* text=auto eol=lf
+
+# 二进制文件不参与 diff / 换行转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.zip binary
+*.ico binary
+
+# Windows 脚本保留 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 锁文件不参与合并冲突标记
+package-lock.json -diff
+pnpm-lock.yaml -diff

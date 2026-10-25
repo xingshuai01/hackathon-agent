@@ -1,0 +1,55 @@
+# ---- 本地工具 / 凭证(绝不入库)----
+.tools/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---- Node / TypeScript ----
+node_modules/
+.pnpm-store/
+dist/
+build/
+out/
+.next/
+coverage/
+*.tsbuildinfo
+.npm/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# ---- 数据 / 产物(体积大或可重建)----
+data/
+artifacts/
+logs/
+*.log
+*.sqlite
+*.db
+
+# ---- 编辑器 / 系统 ----
+.vscode/*
+!.vscode/settings.json.example
+.idea/
+.cursor/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- 临时 ----
+tmp/
+.tmp/
+scratch/
+*.tmp
