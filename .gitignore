@@ -5,6 +5,7 @@
 !.env.example
 *.pem
 *.key
+.workbuddy
 
 # ---- Node / TypeScript ----
 node_modules/
