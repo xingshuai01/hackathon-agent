@@ -3,25 +3,24 @@
 | 项 | 值 |
 |---|---|
 | 项目代号 | `hackathon-agent` |
-| 文档版本 | v1.0(Draft for review) |
+| 文档版本 | **v2.0**(方向修正版,替代 v1.0) |
 | 编写日期 | 2026-10-27 |
-| 文档状态 | 待评审 —— 第 2.2 节的 3 个待确认项必须先关闭 |
+| 文档状态 | 待评审 —— 第 2.2 节 3 个待确认项需关闭 |
 | 目标读者 | 全体开发成员、评审、答辩准备 |
-| 有效期 | 4 天开发周期内为唯一功能基线,变更走本文件第 14.3 节 |
+| 唯一功能基线 | 开发期间所有功能取舍以本文件为准 |
 
-### 本文档的来源与合并关系
+## ⚠️ v2.0 与 v1.0 的根本差异(请先读)
 
-本文档**不是**凭空新写的,而是把四份已有材料收敛成单一基线:
-
-| 来源 | 提供什么 | 本文档如何采纳 |
+| 项 | v1.0(已作废) | **v2.0(当前)** |
 |---|---|---|
-| `docs/reference/claude-code-architecture.md` | Claude Code 分层架构、七个核心机制、三个候选选题 | 第 7 章架构分层的直接依据 |
-| `docs/PLAN.md` | 四天里程碑与验收标准、风险预案 | 第 11 章里程碑、第 13 章风险 |
-| `docs/wyh/仓库分析与开发建议.md` | A-core 范围定义、技术选型、时间检查点、9 条仓库问题 | 第 3 章范围、第 9 章技术选型、第 11 章检查点 |
-| `docs/wyh/需求可行性与开发计划.md` | 知识库/工具库/技能库三层沉淀、PDF 底座、页码锚点 | 第 5 章 FR-10、第 8.1 节数据模型 |
-| `docs/wyh/代码开发规范.md` | 编码规范、工具模板 | 本文档不重复,规定实现必须同时满足该规范 |
+| 产品定义 | 一个产出综述报告的论文 Agent(A-core) | **一个科研 Agent,它的创新点/卖点是三个科研领域模块** |
+| 核心交付 | `report.md` + `evidence.csv` + `prisma.md` | **知识库 + 工具库 + 技能库** 三层沉淀资产 |
+| 综述报告 | 是最终产物 | 降级为**演示手段之一** |
+| 架构重心 | 单条检索→筛选→精读→综述流水线 | **「沉淀」与「消费」两个方向的闭环** |
 
-**冲突处理原则**:当来源之间冲突时,以「4 天内端到端可跑」为最高优先级裁决,并在第 2 章显式记录裁决结果与理由。
+**修正原因**:v1.0 误把「三个模块」当成了「一条流水线的三个步骤」,于是只保留最后一步的产物。实际需求是三个模块各自都是产品的卖点,必须都能被单独展示。
+
+> **命名假设(需确认)**:第 2.2 节 Q0。本文件按「知识库 / 工具库 / 技能库」三分。若第三项的准确名称不同,只需重命名章节标题,不影响设计。
 
 ---
 
@@ -29,126 +28,176 @@
 
 ### 1.1 项目背景
 
-团队参加为期 **4 天**的黑客松,团队定位**偏工程**,参赛目标包含两层:
+团队参加为期 **4 天**的黑客松,定位**偏工程**,目标包含两层:
 
-1. **交付层**:做出一个能现场演示的 Agent 应用。
-2. **学习层**:通过亲手实现,系统理解 Agent 架构的核心机制(工具抽象、主循环、子 Agent、记忆、上下文管理),而不是调用现成 SDK 拼装。
+1. **交付层**:做出一个**科研 Agent**,并把它区别于普通 Agent 的三个创新模块做出来、能演示。
+2. **学习层**:通过亲手实现理解 Agent 架构核心机制(工具抽象、主循环、子 Agent、记忆、上下文管理),不使用现成 Agent 框架。
 
-这两层目标共同决定了:本项目**不使用现成的 Agent 框架**(LangChain / AutoGen / Coze 等),核心机制全部自研,以 Claude Code 的公开架构分析作为参考蓝本。
+### 1.2 产品定位:一句话
 
-### 1.2 目标(Goals)
+> **一个会"长大"的科研 Agent。**
+> 你给它一堆同领域论文,它不只是回答问题,而是把论文**沉淀成三类可复用资产**:记住了什么(知识库)、能做什么(工具库)、该怎么判断(技能库);下次遇到同类任务,它直接用这些资产干活,而不是从头读一遍。
+
+### 1.3 创新点:三个科研领域模块
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│  科研 Agent(主产品:主循环 / 工具调度 / 子 Agent / 记忆)      │
+└───────────────┬───────────────────────────────────────────────┘
+                │  三个创新模块 = Agent 的「能力沉淀层」
+     ┌──────────┼──────────────┬───────────────────┐
+     ▼          ▼              ▼                   │
+┌─────────┐ ┌─────────┐ ┌─────────────┐            │
+│A 个人   │ │B 工具库 │ │C 技能库     │            │
+│知识库   │ │         │ │             │            │
+│「记什么」│ │「能做什么」│「该怎么判断」│            │
+│         │ │         │ │             │            │
+│原子知识页│ │方法→可执 │ │领域流程+判据│            │
+│带页码锚点│ │行工具    │ │+失败模式    │            │
+│可检索   │ │MCP 暴露  │ │按需加载     │            │
+└─────────┘ └─────────┘ └─────────────┘            │
+     │          │              │                   │
+     └──────────┴──────────────┴───────────────────┘
+                │
+     ┌──────────▼──────────────────────────────────┐
+     │  共享底座:文献/PDF → PaperDoc(带页码锚点)  │
+     └─────────────────────────────────────────────┘
+```
+
+**三层用一句话区分**:
+
+| 模块 | 沉淀什么 | 载体 | 一句话 |
+|---|---|---|---|
+| **A 知识库** | 事实与论断(可引用) | Markdown 知识页 + frontmatter | 记「**是什么**」 |
+| **B 工具库** | 可执行动作(有契约) | TS 工具 + MCP server | 做「**怎么做**」 |
+| **C 技能库** | 判断力(何时用哪个) | Skill 文件(Markdown + frontmatter) | 判「**该做什么**」 |
+
+### 1.4 目标(Goals)
 
 | 编号 | 目标 | 可验证的达成标准 |
 |---|---|---|
-| G1 | 打通一条端到端链路 | 一条命令从输入产出最终交付物,连续 3 次成功 |
-| G2 | 自研核心机制 | 工具抽象、主循环、子 Agent、记忆四者均由本仓库代码实现 |
-| G3 | 可现场演示且不怕断网 | 录制回放模式(`DEMO_MODE=replay`)可离线跑完整链路 |
-| G4 | 沉淀可复用资产 | 一次运行的知识/工具有持久化产物,第二次运行能复用 |
-| G5 | 讲得清「学了什么」 | README 能用架构图说明借鉴了 Claude Code 的哪些机制 |
+| G1 | 三个模块都能被**单独演示** | 每个模块有独立的 demo 命令与产物 |
+| G2 | 三个模块**串成一条闭环** | 一条命令:论文进 → 三类资产出 → 任务被完成 |
+| G3 | Agent 内核自研 | 工具抽象/主循环/子 Agent/记忆均为本仓库代码 |
+| G4 | 可现场演示且不怕断网 | `DEMO_MODE=replay` 离线跑完整链路 |
+| G5 | 讲得清"创新点在哪" | README 能说明三个模块相对于普通 RAG / 普通 Agent 的增量 |
 
-### 1.3 非目标(Non-Goals)
+### 1.5 非目标
 
-明确写出**不追求**的东西,防止范围蔓延:
+- 不做多用户 / 鉴权 / SaaS
+- 不做模型训练 / 微调 / 本地推理
+- 不做通用领域(只做科研领域,不追求跨领域泛化)
+- 不追求抽取的"学术级"准确率,只要求**可验证、可追溯、可量化**
 
-- 不做多用户、不做鉴权、不做 SaaS 化
-- 不做 Web 前端(CLI 优先;如 D3 有余力再考虑)
-- 不做模型训练、微调、本地推理
-- 不追求抽取质量的「学术级」准确率,只要求**可验证、可追溯、可量化**
+### 1.6 硬约束
 
-### 1.4 硬约束
-
-| 约束 | 内容 | 影响 |
+| 编号 | 约束 | 影响 |
 |---|---|---|
-| C1 | 工期 4 天,人力约 2–3 人 | 一切设计以「可并行、可裁剪」为前提 |
-| C2 | 必须能用真实 LLM API | D1 10:00 前必须调通,这是最致命的外部依赖 |
-| C3 | 现场演示环境不确定 | 必须有离线回放兜底 |
-| C4 | 团队网络环境存在代理限制 | git/API 需显式配代理,见第 9.4 节 |
-| C5 | 项目路径含空格(`C:\Users\ASUS\Desktop\hacthon pro`) | 所有脚本避免依赖未加引号的路径 |
+| C1 | 4 天工期,2–3 人 | 必须走**纵向薄切片**,不能三个模块各做深 |
+| C2 | 必须有真实 LLM API | D1 10:00 前调通,最致命的外部依赖 |
+| C3 | 现场网络不确定 | 必须离线回放兜底 |
+| C4 | 团队网络有代理限制 | 见第 9.4 节 |
+| C5 | 项目路径含空格 | 脚本路径一律加引号 |
 
 ---
 
 ## 2. 关键决策与待确认项
 
-### 2.1 已决策(本文件生效即视为冻结)
+### 2.1 已决策(本文件生效即冻结)
 
 | 编号 | 决策 | 理由 | 推翻成本 |
 |---|---|---|---|
-| D-01 | 主链路采用 **A-core**(论文检索 → 筛选 → 精读 → 综述产出),不采用 LabNotebook | A-core 覆盖的工具抽象、并行子 Agent、长文档上下文三项学习点最密集;综述产出是确定性输出,适合演示 | 高(全部工具要重写) |
-| D-02 | **不实现**代码骨架生成、LaTeX 排版、引用图谱、多语言输出 | 均属质量不可控或演示无感,失败即毁现场 | 低(可后续追加) |
-| D-03 | 语言 **TypeScript**,运行时 **Node 24** 直接执行 TS(类型剥离,免构建) | 类型系统对 tool_use 结构化解析收益最大;免构建省半天;形态与 Claude Code 一致 | 中 |
-| D-04 | **不用** Ink/React 做终端 UI,用 `chalk` + 原生 stdout | 4 天周期里 UI 框架是纯负债 | 低 |
-| D-05 | 知识存储层做成**可插拔接口**(`KnowledgeStore`),默认本地 Markdown 实现 | 见 2.3,这是化解 D-待确认 的关键设计 | 低 |
-| D-06 | 每个抽取结果**必须带页码锚点**(`page`),无锚点信息不入库 | 无锚点的文本无法验证是否幻觉,整条链路失去可信度 | 高(数据要重跑) |
-| D-07 | 演示兜底从 D1 就设计进工具层(`DEMO_MODE`),不是 D4 补录屏 | 网络与 API 额度是黑客松最常见的翻车点 | 低 |
+| **D-01** | 产品是**科研 Agent + 三个创新模块**,不是"综述报告生成器" | 客户需求原文 | — |
+| **D-02** | 三个模块必须**各自可独立演示**,同时能串成闭环 | 三个都是"卖点",缺一不可 | 高 |
+| **D-03** | 走**纵向薄切片**:每层只做最小可用,优先保证三层贯通 | 4 天做不完三个完整模块 | 中 |
+| **D-04** | **B 工具库分级**:只承诺 L1(方法选型+参数填充),L2(多步 DSL)带人工确认做,L3(自动生成分析代码)**不做** | 论文方法描述 → 可执行代码存在语义鸿沟,成功率不可控 | 低 |
+| **D-05** | **C 技能库必须人工审核**后才入库 | 技能是长期资产,错误的技能会持续污染 agent 判断 | 低 |
+| **D-06** | 知识库存储做成**可插拔接口**(`KnowledgeStore`),默认本地 Markdown | 化解 Q1 不确定性 | 低 |
+| **D-07** | 所有抽取信息**必须带页码锚点** `paperId + page`,无锚点不入库 | 无锚点 = 无法验证幻觉 = 全链路失去可信度 | 高 |
+| **D-08** | 语言 **TypeScript** + Node 24 直接跑 TS(免构建) | 类型系统对 tool_use 解析收益最大;省半天 | 中 |
+| **D-09** | 终端用 `chalk` + 原生 stdout,**不用** Ink/React | 4 天内 UI 框架是负债 | 低 |
+| **D-10** | 演示兜底从 D1 就设计(`DEMO_MODE`),不是 D4 补录屏 | 网络/额度是黑客松最常见翻车点 | 低 |
 
-### 2.2 待确认项(阻塞,需在 D1 12:00 前关闭)
+### 2.2 待确认项
 
-| 编号 | 问题 | 为什么阻塞 | 未确认时的默认动作 |
-|---|---|---|---|
-| **Q1** | 比赛题目中的 **`kiwi` 是否指 [KiwiFS](https://github.com/kiwifs/kiwifs)**? | 若为硬性要求,知识存储必须直连 KiwiFS(Go 单二进制 + MCP);若是自主选型,则本地 Markdown 即可 | **默认按「自主选型」执行**,走 `LocalMarkdownStore`;`KiwiFSStore` 作为 P2 可选项 |
-| **Q2** | LLM Provider 与额度(Anthropic / DeepSeek / 中转) | 决定 SDK、并发上限、单次运行预算 | 默认双 provider 可切换,`.env` 配置 |
-| **Q3** | 演示形态:纯 CLI,还是需要网页 | 影响 D4 工时分配 | **默认纯 CLI** |
-
-> **Q1 的处理方式是本文件最重要的设计取舍**:不把「是否用 KiwiFS」做成架构分支,而是做成**实现替换**(见 2.3)。这样 Q1 无论何时回答,主链路代码都不用改。
+| 编号 | 问题 | 阻塞什么 | 期限 | 未确认时的默认 |
+|---|---|---|---|---|
+| **Q0** | 三个模块的准确名称是否为「个人知识库 / 工具库 / 技能库」? | 文档措辞、Issue 标题 | D1 10:00 | 按本文件命名执行 |
+| **Q1** | 知识库底层 `kiwi` 类产品是否指 **KiwiFS**,还是只要求"RAG 式私有知识库"的自研实现? | 决定是否引入 Go 二进制 + MCP | D1 12:00 | **自研 `LocalMarkdownStore`**;`KiwiFSStore` 列 P2 |
+| **Q2** | LLM Provider 与额度 | SDK 选型、并发上限、成本 | D1 10:00 | 双 provider 可切换 |
+| **Q3** | 演示形态:CLI / Web / 两者 | D4 工时分配 | D1 12:00 | **纯 CLI** + 可选极简 Web 外壳(P2) |
 
 ### 2.3 Q1 的化解设计:可插拔知识存储
 
 ```
-                   ┌─────────────────────────┐
-                   │   KnowledgeStore 接口    │  ← 全系统只依赖这一层
-                   │  put / get / search / link │
-                   └───────────┬─────────────┘
-                               │
-            ┌──────────────────┴──────────────────┐
-            ↓                                     ↓
-  ┌─────────────────────┐            ┌────────────────────────┐
-  │ LocalMarkdownStore  │            │   KiwiFSStore (P2)     │
-  │ · 输出 .md+frontmatter│           │ · 通过 MCP 调用         │
-  │ · 本地全文检索         │           │ · 复用其 FTS5 / 图谱    │
-  │ · 零外部依赖 ✅默认    │           │ · 需额外部署 Go 二进制   │
-  └─────────────────────┘            └────────────────────────┘
-        两者的产物格式保持兼容(同一套 frontmatter 字段),
-        因此 LocalMarkdownStore 的产出可直接被 KiwiFS 导入。
+                  ┌──────────────────────────────┐
+                  │   KnowledgeStore 接口        │ ← 全系统只依赖这层
+                  │   put / get / search / link  │
+                  └──────────────┬───────────────┘
+                                 │
+              ┌──────────────────┴──────────────────┐
+              ▼                                     ▼
+   ┌────────────────────────┐        ┌──────────────────────────┐
+   │ LocalMarkdownStore     │        │ KiwiFSStore (P2)         │
+   │ · .md + frontmatter    │        │ · MCP 调用 KiwiFS        │
+   │ · 关键词/FTS 检索       │        │ · 复用其 FTS5 + 图谱     │
+   │ · 零外部依赖 ✅ 默认    │        │ · 需部署 Go 单二进制     │
+   └────────────────────────┘        └──────────────────────────┘
+        产物格式(frontmatter 字段)保持兼容 → 本地产出可直接导入 KiwiFS
 ```
 
-**收益**:Q1 回答「是」→ 加一个 adapter 文件;回答「否」→ 什么都不用改。
+**收益**:Q1 答"是" → 加一个 adapter 文件;答"否" → 零改动。
 
 ---
 
 ## 3. 范围
 
-### 3.1 v1.0 范围(必须交付)
+### 3.1 v1.0 范围:三个模块的"最小可用" + 一条闭环
+
+**核心演示叙事**:
+
+> 「10 篇同领域论文进来 → 自动长出 知识的页 / 3 个工具 / 1 个技能 → 然后提一个科研任务,Agent 加载技能、调用工具、引用知识页完成它。」
+
+| 模块 | v1.0 最小范围 | 明确不做 |
+|---|---|---|
+| **A 个人知识库** | 单库;10 篇论文;原子知识页(带页码);关键词检索;backlink 关联 | 向量检索(可选)、知识图谱可视化、多库/多空间 |
+| **B 工具库** | L1 级:从论文抽出方法 → 生成**参数化工具**,至少 3 个可执行并跑通 smoke test;MCP 暴露 2 个 | L2 多步 DSL(带人工确认可选)、L3 自动生成分析代码 |
+| **C 技能库** | 1 个完整技能(七节结构),从知识页聚合 + 人工审核,按需加载 | 多技能自动选择、技能自动迭代优化 |
+| **共享底座** | arXiv 元数据优先 / PDF 降级;`PaperDoc` 带页码锚点;解析质量门控 | OCR、公式转写、图表深度解析 |
+| **Agent 内核** | 主循环 + 工具抽象 + 子 Agent(并发 3)+ 文件式记忆 + 回放 | 权限交互确认、远程 agent、多租户 |
+
+### 3.2 两个方向的闭环(本产品的核心设计)
 
 ```
-输入:一个研究问题(例:"LLM 在低资源语言上的检索增强方法有哪些有效做法?")
-  │
-  ├─[1] 检索    ArxivSearchTool        → 20~30 篇候选(带本地缓存)
-  ├─[2] 筛选    ScreeningTool          → 按纳入/排除标准留 8~12 篇,每篇记录理由
-  ├─[3] 精读    PDFReadTool × N(子 Agent 并行)→ 每篇结构化为 PaperDoc
-  ├─[4] 沉淀    KnowledgeStore.put     → 原子知识页(带页码锚点)
-  └─[5] 汇总    SynthesisTool          → report.md + evidence.csv + prisma.md
-  │
-产出:out/report.md  out/evidence.csv  out/prisma.md  knowledge/*.md
+【沉淀方向】论文 → 资产
+  论文 PDF/元数据
+      ↓ 共享底座(FR-D)
+   PaperDoc(带页码锚点)
+      ├──▶ A 知识库:原子知识页(一个论断一页)
+      │        └──▶ 聚合成 C 技能库的「领域地图 / 证据索引」
+      └──▶ B 工具库:方法 → 参数化工具(带证据页码)
+
+【消费方向】任务 → 复用资产
+  科研任务
+      ↓ Agent 判断(加载哪个技能)
+  C 技能库:拿到「标准流程 + 判据 + 失败模式 + 工具映射」
+      ↓ 按流程执行
+  B 工具库:调用具体工具
+      ↓ 需要依据时
+  A 知识库:检索知识页 → 引用 paperId + page
+      ↓
+  交付物 + 新沉淀(反哺)
 ```
 
-### 3.2 明确不做(写进 README「未做范围」,主动交代优于被问出来)
+**这个双向闭环就是创新点的技术表达**,答辩时用这张图讲。
 
-| 不做 | 理由 |
-|---|---|
-| 代码骨架生成(`CodeScaffoldTool`) | 生成质量不可控,失败即毁 demo |
-| LaTeX 排版 | 3 分钟内无人分辨 `.tex` 与 `.md` |
-| 引用图谱(`CitationGraphTool`) | 增值低、API 成本高 |
-| 多语言输出 | 锦上添花 |
-| 完整 PDF 图表/表格精读 | 解析成功率方差太大(仅支持表格转 Markdown 的降级路径) |
-| 网页界面 | CLI 优先;除非 Q3 明确要求 |
-| 用户系统 / 鉴权 / 多租户 | 非目标 |
+### 3.3 工期超支时的裁剪顺序(从上往下砍)
 
-### 3.3 若工期超支的裁剪顺序(从上往下依次砍)
-
-1. 砍知识沉淀层(FR-10)→ 退化为只产出报告
-2. 砍子 Agent 并行(FR-8)→ 退化为单 agent 串行(精读将变慢)
-3. 砍论文数量(30 → 10 篇)
-4. **不砍**:工具抽象(FR-7)、主循环(FR-6)、离线回放(FR-11)
+1. 砍 C 技能库的自动生成 → 手工编写 1 个技能(技能库仍可演示)
+2. 砍 B 工具库到 2 个工具 → 1 个 + 1 个 mock
+3. 砍论文数量 10 → 5 篇
+4. 砍子 Agent 并行 → 串行
+5. **不砍**:共享底座的页码锚点、A 知识库的检索、Agent 主循环、离线回放
 
 ---
 
@@ -156,367 +205,382 @@
 
 ### 4.1 角色
 
-| 角色 | 描述 | 关心什么 |
-|---|---|---|
-| 研究者(主要用户) | 需要快速了解某领域现状的人 | 结论是否可信、能否追溯到原文页码 |
-| 评委 / 观众 | 现场看演示的人 | 3 分钟内看懂「它在干什么」 |
-| 开发者(团队成员) | 写代码的人 | 接口契约稳定、能并行、出错好查 |
+| 角色 | 关心什么 |
+|---|---|
+| 研究生 / 研究者(主要用户) | 我的领域知识能不能沉淀下来、下次不用重读 |
+| 评委 / 观众 | 3 分钟内看懂"它和普通 Agent 差在哪" |
+| 开发者(团队) | 契约稳定、能并行、出错好查 |
 
 ### 4.2 核心用户故事
 
-| 编号 | 故事 | 验收方式 |
+| 编号 | 故事 | 验收 |
 |---|---|---|
-| US-1 | 作为研究者,我输入一个问题,就能得到一份带证据表的综述初稿 | 运行 `node src/main.ts "问题"`,产出 3 个文件 |
-| US-2 | 作为研究者,我看到的每条结论都能点回原文第几页 | 证据表每行有 `paperId + page` |
-| US-3 | 作为观众,我能看到 agent 正在检索/筛选/精读哪一篇 | 终端实时打印每一步 |
-| US-4 | 作为开发者,我新增一个工具只需要加一个文件 | 不改编排层即可注册生效 |
-| US-5 | 作为演示者,网络断了我也能跑完整 demo | `DEMO_MODE=replay` 离线跑通 |
+| US-1 | 我丢 10 篇论文进去,它自动建出可检索的知识库 | `bun/npm run ingest` → `knowledge/` 有产物,能检索 |
+| US-2 | 我看到的每一条知识都能点回原文第几页 | 知识页每条带 `paperId + page` |
+| US-3 | 它把论文里的方法变成了我能直接调用的工具 | 工具库有 ≥3 个工具,`--smoke` 全绿 |
+| US-4 | 它知道这类任务该按什么流程做、容易在哪翻车 | 技能文件含「标准流程 / 失败模式 / 判据」三节 |
+| US-5 | 我提一个任务,它自己选技能、调工具、引用知识完成 | 一条命令产出交付物,并被引用到知识页 |
+| US-6 | 网络断了我也能演示 | `DEMO_MODE=replay` 离线跑通 |
 
 ---
 
 ## 5. 功能需求
 
 > 优先级:P0 = 不做则 demo 不成立;P1 = 里程碑内必须;P2 = 有余力再做。
-> 每条需求都有验收标准,**未写验收标准的需求不允许进入开发**。
-
-### FR-1 配置与环境 · P0
-
-**描述**:从 `.env` 加载运行配置,启动时校验必填项,缺失立即失败并给出可操作的提示。
-
-| 验收标准 | |
-|---|---|
-| AC-1.1 | 缺少必填项时报错信息包含「变量名 + 到哪填 + 示例」,而非堆栈 |
-| AC-1.2 | 支持 provider 切换(anthropic / openai 兼容 / deepseek) |
-| AC-1.3 | `.env` 不入库;`.env.example` 完整列出所有变量并标注必填 |
-
-**依赖**:无
+> 每条必须有可测验收标准;无验收标准的需求不允许开发。
 
 ---
 
-### FR-2 检索 `ArxivSearchTool` · P0
+### FR-A 个人知识库 · 三个创新模块之一
 
-**描述**:按研究问题构造检索式,从 arXiv(优先官方 API/HTML,PDF 为降级)取回候选论文元数据。
+#### FR-A1 原子知识页生成 · P0
+
+**描述**:把一篇论文拆成「一个论断一页」的原子知识页,而不是按 token 机械切片。
+
+> **为什么强调原子化**:按固定 token 切会把一篇论文炸成上百个碎片,单页失去主语、引用断链。原子页以「一个可独立引用的论断」为单位。
 
 | 验收标准 | |
 |---|---|
-| AC-2.1 | 输入 query,返回 20–30 条 `{paperId, title, authors, year, abstract}` |
-| AC-2.2 | 响应本地缓存到 `fixtures/`,重复运行不重复请求(可被 `DEMO_MODE=replay` 命中) |
-| AC-2.3 | 网络失败时指数退避重试 ≥ 2 次,最终失败返回结构化错误而非抛栈 |
-| AC-2.4 | 单次调用耗时上限 30s,超时可控 |
+| AC-A1.1 | 单篇论文产出 5–20 个原子知识页,每页只含一个论断 |
+| AC-A1.2 | 每页必带 `paperId` 与 `page`,缺任一则拒绝入库 |
+| AC-A1.3 | 每页标注 `kind`:`claim / method / result / limitation / definition` |
+| AC-A1.4 | 每页含 `evidence.quote`(原文摘句)+ `evidence.page` |
+| AC-A1.5 | 建立与来源论文的双向链接(backlink) |
+
+#### FR-A2 知识页存储与格式 · P0
+
+| 验收标准 | |
+|---|---|
+| AC-A2.1 | 落盘为 `knowledge/<paperId>/notes.md`,含 YAML frontmatter |
+| AC-A2.2 | frontmatter 字段:`noteId / paperId / page / kind / confidence / created_at` |
+| AC-A2.3 | 产物为纯 Markdown,人类可直接阅读、可 git diff |
+| AC-A2.4 | 与 KiwiFS 的 frontmatter 约定兼容(便于后续导入) |
+
+#### FR-A3 知识检索 · P0
+
+| 验收标准 | |
+|---|---|
+| AC-A3.1 | 支持关键词检索,返回 `noteId + 摘要 + 锚点` |
+| AC-A3.2 | 检索结果可被 Agent 作为工具调用获取(不是只能人看) |
+| AC-A3.3 | 检索响应 < 1s(本地 Markdown,不需索引服务) |
+| AC-A3.4 | 向量检索列为 P2,不阻塞 v1.0 |
+
+#### FR-A4 增量与去重 · P1
+
+| 验收标准 | |
+|---|---|
+| AC-A4.1 | `paperId` 稳定可推导:DOI / arXiv ID 优先,否则 `sha256(file)[:16]` |
+| AC-A4.2 | 同一论文重复入库默认跳过(可 `--force`) |
+| AC-A4.3 | 已入库论文在日志中明确提示「命中已有,跳过」 |
+
+#### FR-A5 知识关联 · P2
+
+| 验收标准 | |
+|---|---|
+| AC-A5.1 | 支持 `supports / contradicts / extends` 三种关系链接 |
+| AC-A5.2 | 能被 C 技能库的「证据索引」引用 |
 
 ---
 
-### FR-3 筛选 `ScreeningTool` · P0
+### FR-B 工具库 · 三个创新模块之一
 
-**描述**:按显式纳入/排除标准,把 20–30 篇压到 8–12 篇,并为每篇记录决策理由。
+#### FR-B1 方法抽取 · P0
+
+**描述**:从论文中抽取「可参数化的方法」——方法名、参数、前提条件、证据页码。
 
 | 验收标准 | |
 |---|---|
-| AC-3.1 | 纳入/排除标准来自可配置参数,不硬编码 |
-| AC-3.2 | 每篇产出 `{paperId, decision: include/reject, reason, matched_criteria}` |
-| AC-3.3 | 决策理由进入 `out/evidence.csv`,可审计 |
-| AC-3.4 | 筛选结果数落在 8–12 区间(超出则告警) |
+| AC-B1.1 | 输出 `MethodSpec {name, params[], preconditions[], evidencePage}` |
+| AC-B1.2 | `params` 每项含 `{name, type, required, default?, description}` |
+| AC-B1.3 | 方法必须来自论文正文,**必须带证据页码** |
+| AC-B1.4 | 无法确定参数类型的方法标记 `unsupported`,不进入工具生成 |
 
-**依赖**:FR-2
+#### FR-B2 工具生成(L1 级)· P0
+
+**描述**:按 D-04 只做 L1 —— **方法选型 + 参数填充**,不自动写分析算法。
+
+| 验收标准 | |
+|---|---|
+| AC-B2.1 | 从 `MethodSpec` 生成符合 `Tool` 接口的 TS 工具(见 FR-D2) |
+| AC-B2.2 | 生成的工具必须通过 `inputSchema` 校验(非法参数被拒绝) |
+| AC-B2.3 | 每个生成工具**必须通过 smoke test**(至少一次合法调用的预期输出) |
+| AC-B2.4 | smoke test 未通过的工具标记 `draft`,不注册到 Agent 可调用池 |
+| AC-B2.5 | 生成失败时降级为「参数模板 + 人工填写」,不静默丢弃 |
+
+#### FR-B3 工具注册与发现 · P0
+
+| 验收标准 | |
+|---|---|
+| AC-B3.1 | 工具注册表可在运行时列出全部可用工具(name + description) |
+| AC-B3.2 | Agent 通过 `description` 判断该用哪个工具(描述质量影响命中率) |
+| AC-B3.3 | 新增工具只需加一个文件 + 一行注册,不改编排层 |
+
+#### FR-B4 MCP 暴露 · P2
+
+| 验收标准 | |
+|---|---|
+| AC-B4.1 | `stdio` 模式下可被 MCP 客户端发现工具列表 |
+| AC-B4.2 | 至少 2 个工具可通过 MCP 被外部调用成功 |
+
+#### FR-B5 工具体检 · P1
+
+| 验收标准 | |
+|---|---|
+| AC-B5.1 | 提供 `tools doctor` 命令,批量跑 smoke test 并输出通过率 |
+| AC-B5.2 | 通过率作为 B 模块的核心验收指标(见第 12 章) |
 
 ---
 
-### FR-4 精读与抽取 `PDFReadTool` · P0
+### FR-C 技能库 · 三个创新模块之一
 
-**描述**:把单篇论文解析为结构化 `PaperDoc`,并抽取原子知识页。
+#### FR-C1 技能文件结构 · P0
+
+**描述**:技能不是"综述",是**判断力**。固定七节结构,缺节视为不合格。
+
+| 节 | 内容 | 作用 |
+|---|---|---|
+| 1. 领域地图 | 10–20 个关键概念节点(≤20) | 建立术语边界 |
+| 2. 标准流程 | 每阶段:输入 → 动作 → 判据 | 告诉 agent 先做什么 |
+| 3. 方法→工具映射 | 指向 B 工具库的具体工具 | 把判断落到动作 |
+| 4. **常见失败模式** ★ | 这个领域最容易踩的坑 | **最有价值的一节** |
+| 5. 术语消歧 | 同名不同义的概念 | 防止误用 |
+| 6. 证据索引 | 指向 A 知识库的知识页 | 可追溯 |
+| 7. 负向约束 | 明确"不要做什么" | 防止过度发挥 |
 
 | 验收标准 | |
 |---|---|
-| AC-4.1 | 输出符合第 8.1 节 `PaperDoc` 类型定义 |
-| AC-4.2 | **每个段落必须带 `page` 页码锚点**(硬要求,D-06) |
-| AC-4.3 | 表格转为 Markdown 保留行列对应 |
-| AC-4.4 | 输出 `parseQuality {pagesParsed, pagesTotal, hasOcr}`,解析率 < 0.7 的论文标记 `quarantined` 并不进入抽取队列 |
-| AC-4.5 | `paperId` 稳定可推导:DOI / arXiv ID 优先,否则 `sha256(file)[:16]` |
+| AC-C1.1 | 技能文件为 Markdown + YAML frontmatter(`name / domain / version / load_when`) |
+| AC-C1.2 | 七节齐全,任一缺失则标记 `incomplete` |
+| AC-C1.3 | 第 4 节「失败模式」至少 3 条具体条目 |
+| AC-C1.4 | 第 3 节的每个工具引用都必须真实存在于 B 工具库 |
 
-**依赖**:FR-3
+#### FR-C2 技能生成 · P1
+
+| 验收标准 | |
+|---|---|
+| AC-C2.1 | 从 A 知识库的知识页聚合生成技能草案 |
+| AC-C2.2 | 草案标注 `needs_review: true`,**必须人工审核**后才转 `active`(D-05) |
+| AC-C2.3 | 生成失败时允许手工编写技能,技能库功能不受影响 |
+
+#### FR-C3 技能按需加载 · P0
+
+| 验收标准 | |
+|---|---|
+| AC-C3.1 | 技能声明 `load_when` 条件(关键词 / 任务类型) |
+| AC-C3.2 | Agent 按任务匹配加载技能,不一次性全塞进 system prompt |
+| AC-C3.3 | 加载行为在日志中可见:「加载技能 X,原因 Y」 |
+| AC-C3.4 | 无匹配技能时正常降级,不报错 |
 
 ---
 
-### FR-5 汇总与产出 `SynthesisTool` · P0
+### FR-D 共享底座与 Agent 内核
 
-**描述**:聚合各篇抽取结果,产出三件交付物。
+#### FR-D1 文献底座 · P0
 
 | 验收标准 | |
 |---|---|
-| AC-5.1 | `out/report.md`:分主题综述,每条论断带 `[paperId#p{N}]` 引用 |
-| AC-5.2 | `out/evidence.csv`:列 `paperId,page,claim,method,dataset,metric,value,confidence` |
-| AC-5.3 | `out/prisma.md`:含 Mermaid PRISMA 流程图,数字自洽(检索数-排除数=纳入数) |
-| AC-5.4 | 报告结构与 CSV 内容一致,不出现表中没有的结论 |
+| AC-D1.1 | arXiv 优先走官方元数据/HTML,PDF 解析作降级 |
+| AC-D1.2 | 输出符合第 8.1 节 `PaperDoc`,**每个段落带 `page`** |
+| AC-D1.3 | 表格转 Markdown 保留行列对应 |
+| AC-D1.4 | `parseQuality.pagesParsed / pagesTotal < 0.7` 标记 `quarantined`,不进入抽取队列 |
+| AC-D1.5 | 解析失败不中断批量流程,失败清单进运行报告 |
 
-**依赖**:FR-4
+#### FR-D2 工具抽象 · P0
+
+**描述**:仿 Claude Code `Tool.ts`,统一工具契约。**B 生成的工具也遵守同一契约。**
+
+| 验收标准 | |
+|---|---|
+| AC-D2.1 | 每个工具:`name / description / inputSchema / call()` |
+| AC-D2.2 | `inputSchema` 由 `zod` 定义并自动转 JSON Schema,与运行时校验共用一份 |
+| AC-D2.3 | 返回统一 `ToolResult`,区分 `ok / recoverable_error / fatal_error` |
+| AC-D2.4 | 支持进度上报(供 UI 显示「第 3/10 篇」) |
+
+#### FR-D3 Agent 主循环 · P0
+
+**描述**:仿 `query.ts`:调 LLM → 解析 tool_use → 校验 → 执行 → 回填 → 继续。
+
+| 验收标准 | |
+|---|---|
+| AC-D3.1 | 流式输出,文本增量实时打印 |
+| AC-D3.2 | 单轮多 tool_use 并发执行并正确回填 |
+| AC-D3.3 | `MAX_TURNS` 上限,触顶安全退出并保留已有产出 |
+| AC-D3.4 | 单工具失败不中断主循环,错误结构化回填,模型可换策略 |
+| AC-D3.5 | `AbortController` 全程可中断(Ctrl+C 立即停) |
+| AC-D3.6 | **主循环不允许 throw 到顶层**,异常必须收敛 |
+
+#### FR-D4 子 Agent · P1
+
+| 验收标准 | |
+|---|---|
+| AC-D4.1 | 主 agent 派发 N 个子任务,子 agent 独立上下文 |
+| AC-D4.2 | 工具白名单可配置(精读 agent 不应能调检索) |
+| AC-D4.3 | 并发默认 3,可配置 |
+| AC-D4.4 | 单个子 agent 失败不影响其余,失败项在报告中标注 |
+| AC-D4.5 | 子 agent token 消耗汇总进运行报告 |
+
+#### FR-D5 记忆 · P1
+
+| 验收标准 | |
+|---|---|
+| AC-D5.1 | 文件式持久化,人类可读 Markdown |
+| AC-D5.2 | 启动时加载并注入 system prompt |
+| AC-D5.3 | 已处理论文默认跳过(`--force` 覆盖) |
+| AC-D5.4 | 可演示:第二次运行明显更快,日志显示命中记忆 |
 
 ---
 
-### FR-6 Agent 主循环 · P0
+### FR-E 交付、可观测与演示
 
-**描述**:仿 Claude Code `query.ts` 的实现:调 LLM → 解析 tool_use → 权限/校验 → 执行工具 → 结果回填 → 继续,直到模型不再请求工具。
-
-| 验收标准 | |
-|---|---|
-| AC-6.1 | 支持流式输出,文本增量实时打印 |
-| AC-6.2 | 单轮多个 tool_use 能被并发执行并正确回填 |
-| AC-6.3 | 有 `MAX_TURNS` 上限,触顶时安全退出并保留已有产出 |
-| AC-6.4 | 单个工具失败不中断主循环,错误结构化回填给模型,模型可自行换策略 |
-| AC-6.5 | 全程 `AbortController` 可中断(Ctrl+C 立即停) |
-| AC-6.6 | 每轮打印:轮次、模型思考摘要、调用的工具与参数摘要 |
-
----
-
-### FR-7 工具抽象 · P0
-
-**描述**:仿 Claude Code `Tool.ts`,统一的工具契约。
+#### FR-E1 运行追踪与回放 · P0
 
 | 验收标准 | |
 |---|---|
-| AC-7.1 | 每个工具有 `name / description / inputSchema(JSON Schema) / call()` |
-| AC-7.2 | `inputSchema` 由 `zod` 定义并自动转 JSON Schema,与运行时校验共用一份定义 |
-| AC-7.3 | 新工具只需在 `src/tools/` 加一个文件 + 一行注册,不改编排层 |
-| AC-7.4 | 每个工具可上报进度事件(供 UI 显示「正在处理第 3/12 篇」) |
-| AC-7.5 | 工具返回统一 `ToolResult`,区分 `ok / recoverable_error / fatal_error` |
+| AC-E1.1 | 每次运行产出 JSONL trace 到 `logs/`(轮次/工具/耗时/token) |
+| AC-E1.2 | `DEMO_MODE=replay` 时全部外部调用从 `fixtures/` 回放,完全离线 |
+| AC-E1.3 | `DEMO_MODE=live --record` 可录制响应到 `fixtures/` |
+| AC-E1.4 | 运行结束打印汇总:耗时 / token / 工具调用数 / 失败数 |
 
----
-
-### FR-8 子 Agent 编排 · P1
-
-**描述**:仿 `AgentTool/runAgent.ts`。子 agent 是「主循环的再实例化」,独立上下文 + 独立工具白名单。用于精读阶段的并行处理。
+#### FR-E2 CLI · P0
 
 | 验收标准 | |
 |---|---|
-| AC-8.1 | 主 agent 可派发 N 个子任务,子 agent 拿到独立上下文,不污染主对话 |
-| AC-8.2 | 子 agent 工具白名单可配置(精读 agent 不应能调检索工具) |
-| AC-8.3 | 并发数可配置,默认 3,避免 API 限流 |
-| AC-8.4 | 单个子 agent 失败不影响其余,失败项在最终报告中标注 |
-| AC-8.5 | 子 agent 的 token 消耗汇总进运行报告 |
+| AC-E2.1 | `node src/main.ts ingest <论文>` — 沉淀(跑 A/B/C) |
+| AC-E2.2 | `node src/main.ts ask "<任务>"` — 消费(加载技能→调工具→引用知识) |
+| AC-E2.3 | `node src/main.ts tools doctor` — 工具体检 |
+| AC-E2.4 | 退出码:0 成功 / 1 失败 / 2 配置错误 |
+| AC-E2.5 | `scripts/demo.sh` 一键演示 |
 
----
-
-### FR-9 记忆 · P1
-
-**描述**:仿 `memdir`。以文件形式持久化「已处理过什么」,跨运行复用,避免重复付费。
-
-| 验收标准 | |
-|---|---|
-| AC-9.1 | 记忆为人类可读的 Markdown,含 frontmatter(paperId、处理时间、结论摘要) |
-| AC-9.2 | 启动时加载并注入 system prompt |
-| AC-9.3 | 已处理论文默认跳过,可用 `--force` 覆盖 |
-| AC-9.4 | 可演示:第二次运行明显更快,且日志显示命中记忆 |
-
----
-
-### FR-10 知识沉淀层 `KnowledgeStore` · P1
-
-**描述**:把原子知识页写入可插拔存储(见 2.3)。**本需求与 Q1 解耦。**
-
-| 验收标准 | |
-|---|---|
-| AC-10.1 | 定义 `KnowledgeStore` 接口:`put(note) / get(id) / search(query) / link(from,to,rel)` |
-| AC-10.2 | `LocalMarkdownStore` 默认实现,产出 `knowledge/<paperId>/*.md`,带 frontmatter |
-| AC-10.3 | frontmatter 字段与 KiwiFS 保持兼容(便于后续导入) |
-| AC-10.4 | 支持按关键词检索已沉淀知识,并在汇总阶段被使用 |
-| AC-10.5 | 切换存储实现只改一处配置,不动调用方 |
-| AC-10.6 | `KiwiFSStore`(若 Q1 为「是」)通过 MCP 接入,列为 P2 |
-
----
-
-### FR-11 可观测与回放 · P0
-
-**描述**:让「出错可查、断网可演」。
-
-| 验收标准 | |
-|---|---|
-| AC-11.1 | 每次运行产出 JSONL trace 到 `logs/`,记录每轮请求、工具调用、耗时、token |
-| AC-11.2 | `DEMO_MODE=replay` 时所有外部调用从 `fixtures/` 回放,完全离线 |
-| AC-11.3 | `DEMO_MODE=live` 时可选择性录制响应到 `fixtures/`(`--record`) |
-| AC-11.4 | 运行结束打印汇总:总耗时、总 token、各工具调用次数、失败数 |
-
----
-
-### FR-12 CLI 入口 · P0
-
-**描述**:单命令入口。
-
-| 验收标准 | |
-|---|---|
-| AC-12.1 | `node src/main.ts "<研究问题>"` 跑完整链路 |
-| AC-12.2 | 参数:`--max-papers N`、`--force`、`--record`、`--dry-run` |
-| AC-12.3 | 退出码语义:0 成功 / 1 失败 / 2 配置错误 |
-| AC-12.4 | 提供 `scripts/demo.sh` 一键演示脚本 |
-
----
-
-### FR-13 MCP 能力暴露 · P2
-
-**描述**:把工具集以 MCP server 形态暴露,体现「开放生态」的学习点。仅在 D3 提前完成时启动。
-
-| 验收标准 | |
-|---|---|
-| AC-13.1 | `stdio` 模式可被 MCP 客户端发现工具列表 |
-| AC-13.2 | 至少 2 个工具可通过 MCP 被外部调用 |
+> **三个命令对应三个模块的独立演示能力(满足 D-02)。**
 
 ---
 
 ### 需求依赖图
 
 ```
-FR-1 配置 ─────────────┐
-FR-6 主循环 ── FR-7 工具抽象 ──┬── FR-2 检索 ── FR-3 筛选 ── FR-4 精读 ── FR-5 汇总
-                              │                              │
-                              ├── FR-11 回放 ────────────────┤
-                              ├── FR-8 子 Agent ─────────────┘
-                              ├── FR-9 记忆
-                              └── FR-10 知识沉淀 ── (FR-13 MCP)
-FR-12 CLI 贯穿
+FR-D1 文献底座 ──┬──▶ FR-A1 知识页 ──▶ FR-A2 存储 ──▶ FR-A3 检索
+                 │         │
+                 │         └──▶ FR-C2 技能生成 ──▶ FR-C1 技能结构 ──▶ FR-C3 加载
+                 │                                            │
+                 └──▶ FR-B1 方法抽取 ──▶ FR-B2 工具生成 ──▶ FR-B3 注册 ◀┘
+                                              │
+                                              └──▶ FR-B5 体检 ──▶ FR-B4 MCP(P2)
+
+FR-D2 工具抽象 ◀── 被 FR-B2 依赖
+FR-D3 主循环   ◀── 消费 FR-A3 / FR-B3 / FR-C3
+FR-D4 子 Agent / FR-D5 记忆 / FR-E1 回放 / FR-E2 CLI 贯穿
 ```
 
 ---
 
 ## 6. 非功能需求
 
-| 编号 | 类别 | 要求 | 验收方式 |
+| 编号 | 类别 | 要求 | 验收 |
 |---|---|---|---|
-| NFR-1 | 可演示性 | 从冷启动到产出 ≤ 3 分钟;离线回放 ≤ 60 秒 | 计时实测 3 次 |
-| NFR-2 | 成本 | 单次完整运行 token 成本有硬上限(`MAX_TOTAL_TOKENS`) | 运行结束打印实际消耗,超限即中止 |
-| NFR-3 | 健壮性 | 任一外部依赖失败不导致进程崩溃 | 人为断网 / 改错 key 实测 |
-| NFR-4 | 可复现性 | 同一输入 + `replay` 模式结果稳定 | 连跑 3 次 diff 一致 |
-| NFR-5 | 可追溯性 | 结论可回指到 `paperId + page` 的比例 ≥ 95% | 抽样 20 条人工核对 |
-| NFR-6 | 开发效率 | 免构建启动,改代码即生效;类型检查独立执行 | `node src/main.ts` 直接跑 |
-| NFR-7 | 质量门禁 | CI 跑 `typecheck` + 单测 + 回放冒烟,总时长 < 90s | PR 上绿 ✔ |
-| NFR-8 | 安全 | 仓库内无密钥;密钥仅存 `.env` | 提交前扫描 `gho_`/`sk-`/`api_key` |
-| NFR-9 | 可理解性 | 终端输出能让非技术观众看懂当前在做什么 | 找一位非队员观看并复述 |
+| NFR-1 | 可演示性 | live 端到端 ≤ 3 分钟;replay ≤ 60 秒 | 计时 3 次 |
+| NFR-2 | **模块独立性** | 三个模块各自有独立命令与产物,可单独演示 | 逐个跑一遍 |
+| NFR-3 | 成本 | 单次运行 token 有硬上限(`MAX_TOTAL_TOKENS`) | 运行汇总打印 |
+| NFR-4 | 健壮性 | 任一外部依赖失败不导致进程崩溃 | 人为断网实测 |
+| NFR-5 | 可复现性 | 同输入 + replay 结果稳定 | 连跑 3 次 diff 一致 |
+| NFR-6 | **可追溯性** | 知识页锚点可验证率 ≥ 95% | 抽 20 条核对页码 |
+| NFR-7 | 开发效率 | 免构建;`node src/main.ts` 直接跑 | 实测 |
+| NFR-8 | 质量门禁 | CI:`typecheck` + 单测 + replay 冒烟,< 90s | Actions 绿 |
+| NFR-9 | 安全 | 仓库内无密钥;密钥只存 `.env` | 提交前扫描 |
+| NFR-10 | 可理解性 | 非技术观众看终端能说出"它在干什么" | 找外人观看复述 |
 
 ---
 
 ## 7. 系统架构
 
-### 7.1 分层(与 Claude Code 的对应关系)
+### 7.1 六层架构(与 Claude Code 的对应)
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│ ① 入口层   src/main.ts                                        │
-│    CLI 参数解析 · 配置加载 · 启动编排                          │
-│    ⇔ Claude Code: src/entrypoints/cli.tsx                     │
-├──────────────────────────────────────────────────────────────┤
-│ ② 交互层   src/ui/                                            │
-│    流式输出 · 工具调用可视化 · 进度条(chalk + stdout)          │
-│    ⇔ Claude Code: src/ink/ (我们用轻量实现,不上 React)        │
-├──────────────────────────────────────────────────────────────┤
-│ ③ 编排层 ★ src/agent/                                         │
-│    loop.ts      主循环(调 LLM → 解析 → 执行 → 回填)          │
-│    subagent.ts  子 Agent 派生                                  │
-│    types.ts     冻结契约(全队只读)                            │
-│    ⇔ Claude Code: src/query.ts + QueryEngine.ts + AgentTool/  │
-├──────────────────────────────────────────────────────────────┤
-│ ④ 工具层   src/tools/                                         │
-│    registry.ts  工具注册表                                     │
-│    search/ screening/ read/ synthesis/  ← 业务工具             │
-│    ⇔ Claude Code: src/tools/*(40+ 工具的统一接口)             │
-├──────────────────────────────────────────────────────────────┤
-│ ⑤ 服务层   src/services/                                      │
-│    llm/         provider 抽象 + 流式解析 + 重试               │
-│    pdf/         PDF → PaperDoc                                │
-│    knowledge/   KnowledgeStore 接口 + LocalMarkdown 实现 ★     │
-│    trace/       JSONL 记录 + 回放                             │
-│    cache/       fixtures 读写                                 │
-│    ⇔ Claude Code: src/services/api, compact, extractMemories  │
-├──────────────────────────────────────────────────────────────┤
-│ ⑥ 状态与存储层                                                │
-│    memory/      文件式记忆(memdir 风格)                       │
-│    store/       知识页落盘                                    │
-│    ⇔ Claude Code: src/memdir/                                 │
-└──────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│ ① 入口层  src/main.ts                                          │
+│    CLI 子命令:ingest / ask / tools doctor                      │
+│    ⇔ Claude Code: src/entrypoints/cli.tsx                      │
+├────────────────────────────────────────────────────────────────┤
+│ ② 交互层  src/ui/                                              │
+│    流式输出 · 工具调用可视化 · 进度(chalk + stdout)             │
+│    ⇔ Claude Code: src/ink/(我们轻量化,不上 React)             │
+├────────────────────────────────────────────────────────────────┤
+│ ③ 编排层 ★ src/agent/                                          │
+│    types.ts     ★冻结契约                                       │
+│    loop.ts      主循环                                          │
+│    subagent.ts  子 Agent 派生                                   │
+│    ⇔ Claude Code: src/query.ts + AgentTool/                    │
+├────────────────────────────────────────────────────────────────┤
+│ ④ 工具层  src/tools/                                           │
+│    types.ts(★契约) registry.ts                                 │
+│    knowledge/    ← A 模块的检索工具                             │
+│    methodtools/  ← B 模块生成/加载的工具                        │
+│    ⇔ Claude Code: src/tools/*                                  │
+├────────────────────────────────────────────────────────────────┤
+│ ⑤ 服务层  src/services/                                        │
+│    llm/         provider + 流式 + 重试                          │
+│    paper/       PDF/arXiv → PaperDoc(共享底座)                │
+│    knowledge/   KnowledgeStore 接口 + LocalMarkdown(★契约)     │
+│    toolsynth/   方法抽取 + 工具生成 + smoke test(B 模块)        │
+│    skills/      技能生成 + 加载(C 模块)                        │
+│    trace/       JSONL + replay                                  │
+│    cache/       fixtures                                        │
+│    ⇔ Claude Code: services/api, compact, extractMemories       │
+├────────────────────────────────────────────────────────────────┤
+│ ⑥ 状态与存储层                                                  │
+│    memory/      文件式记忆(memdir 风格)                        │
+│    store/       知识页 / 工具 / 技能落盘                        │
+└────────────────────────────────────────────────────────────────┘
 ```
 
-> ★ 标记的两处是全项目最需要先冻结的部分:③ 的 `types.ts` 与 ⑤ 的 `KnowledgeStore` 接口。
-
-### 7.2 端到端数据流
+### 7.2 「沉淀」流程时序
 
 ```
-用户问题
+ingest <论文集合>
    │
-   ▼
-[FR-1 配置校验] ──失败──▶ 退出码 2
+   ├─▶ [共享底座] 解析 → PaperDoc(page 锚点)     ← 质量门控,<0.7 隔离
    │
-   ▼
-[FR-9 加载记忆] ──已处理过──▶ 跳过(可 --force 覆盖)
+   ├─▶ [A 知识库] 原子知识页生成 → KnowledgeStore.put
    │
-   ▼
-┌──────────────── FR-6 主循环 ────────────────┐
-│  LLM 决策                                    │
-│    │                                        │
-│    ├─▶ FR-2 检索 ──→ 30 篇候选 ──▶ cache    │
-│    ├─▶ FR-3 筛选 ──→ 10 篇 + 理由            │
-│    ├─▶ FR-8 派发子 Agent(并发 3)          │
-│    │      └─▶ FR-4 精读 ──▶ PaperDoc         │
-│    │                   └─▶ FR-10 写入知识页   │
-│    ├─▶ FR-5 汇总 ──→ 3 个交付物              │
-│    └─▶ 无工具需求 ──▶ 结束                    │
-└─────────────────────────────────────────────┘
+   ├─▶ [B 工具库] 方法抽取 MethodSpec → 工具生成 → smoke test
+   │                                  ├ 通过 → 注册
+   │                                  └ 失败 → 标 draft
    │
-   ▼
-[FR-11 打印汇总:耗时 / token / 工具调用数]
+   ├─▶ [C 技能库] 知识页聚合 → 技能草案 → needs_review(人工审核)
    │
-   ▼
-out/report.md · out/evidence.csv · out/prisma.md · knowledge/ · logs/
+   └─▶ 汇总报告:知识页 N 条 / 工具 M 个(通过 K 个)/ 技能草案 1 个
 ```
 
-### 7.3 Agent 主循环(核心时序)
+### 7.3 「消费」流程时序
 
 ```
-loop(messages):
-  for turn in 1..MAX_TURNS:
-    resp = llm.stream(messages, tools)        // 流式
-    if resp.text: ui.print(resp.text)
-
-    if resp.tool_calls is empty:
-       return                                 // 正常收敛
-
-    results = []
-    for call in resp.tool_calls:              // 可并发
-       tool = registry.get(call.name)
-       if not tool: results += err("unknown tool")
-       else:
-         parsed = tool.inputSchema.validate(call.input)
-         if not parsed.ok: results += err("invalid input")   // 回填给模型自纠
-         else:
-           results += await tool.call(parsed.data, ctx)      // 失败不抛,返回结构化错误
-
-    messages += resp.tool_calls
-    messages += results                        // 回填
-  # 触顶
-  ui.warn("达到 MAX_TURNS,输出已有结果")
+ask "<科研任务>"
+   │
+   ├─▶ [FR-C3] 匹配 load_when → 加载技能(拿到流程/判据/失败模式/工具映射)
+   │
+   ├─▶ [FR-D3] 主循环:LLM 依技能流程决策
+   │      ├─▶ [FR-A3] 检索知识页(需要依据时)→ 引用 paperId+page
+   │      ├─▶ [FR-B3] 调用工具(需要计算/分析时)
+   │      └─▶ [FR-D4] 需要并行时派发子 Agent
+   │
+   └─▶ 产出交付物 + 反哺沉淀(新的知识页)
 ```
-
-**关键约束**:主循环**不允许** `throw` 到顶层。所有异常必须收敛成 `ToolResult.error` 或全局降级路径。
 
 ### 7.4 子 Agent 派生
 
-```
-主 agent ──派发(task, toolWhitelist)──▶ 子 agent
-                                          │ 独立 messages / 独立 token 预算
-                                          │ 只暴露白名单工具
-                                          ▼
-                          ◀──返回 {result, tokens, status}──
-```
-
-- 子 agent **不共享**主对话上下文(避免上下文污染)
-- 子 agent 结果以**结构化摘要**回填主对话,不放全文
-- 这是「主循环的再实例化」:复用同一 `loop()`,不同参数
+与 v1.0 相同:子 agent 是主循环的**再实例化**,独立上下文 + 工具白名单,结果以结构化摘要回填。
 
 ### 7.5 借鉴点对照表(用于 README 与答辩)
 
-| Claude Code 机制 | 我们的实现 | 验收位置 |
+| Claude Code 机制 | 我们的实现 | 我方增量(创新点) |
 |---|---|---|
-| `Tool.ts` 统一工具接口 | `src/tools/types.ts` + zod→JSON Schema | AC-7.1~7.5 |
-| `query.ts` 主循环 | `src/agent/loop.ts` | AC-6.1~6.6 |
-| `AgentTool/runAgent.ts` 子 Agent | `src/agent/subagent.ts` | AC-8.1~8.5 |
-| `services/compact/` 上下文压缩 | 分段精读 + 摘要(降级为分段,见 8.5) | AC-6.3 |
-| `memdir/` 文件式记忆 | `src/state/memory/` | AC-9.1~9.4 |
-| `services/mcp/` 动态工具发现 | `src/tools/registry.ts` + FR-13 | AC-13.1~13.2 |
+| `Tool.ts` 统一工具接口 | `src/tools/types.ts` | **工具是论文里长出来的**,不是人手写的 |
+| `query.ts` 主循环 | `src/agent/loop.ts` | 循环里注入**技能**作为判断依据 |
+| `AgentTool/runAgent.ts` | `src/agent/subagent.ts` | 精读阶段并行 |
+| `memdir/` 记忆 | `src/state/memory/` | 记忆升级为**结构化知识库**(可检索、带锚点) |
+| MCP 动态工具发现 | `registry.ts` + FR-B4 | 工具由 B 模块**自动生成** |
+| — (Claude Code 无对应) | **C 技能库** | **纯增量:把领域判断力固化为可加载资产** |
+
+> 答辩要点:**「会自己长工具、长技能的 Agent」是相对通用 Agent 的核心差异。**
 
 ---
 
@@ -525,9 +589,9 @@ loop(messages):
 ### 8.1 数据模型
 
 ```ts
-// ---------- 论文底座(全系统最基础的契约)----------
+// ===== 共享底座 =====
 type PaperDoc = {
-  paperId: string              // 稳定 ID:DOI / arXiv ID,否则 sha256(file)[:16]
+  paperId: string              // DOI / arXiv ID,否则 sha256(file)[:16]
   title: string
   authors: string[]
   year: number
@@ -544,171 +608,210 @@ type PaperDoc = {
   parseQuality: { pagesParsed: number; pagesTotal: number; hasOcr: boolean }
 }
 
-// ---------- 原子知识页(沉淀层的基本单位)----------
+// ===== A 知识库 =====
 type AtomicNote = {
   noteId: string               // `${paperId}#p${page}#${hash(claim).slice(0,6)}`
   paperId: string
-  page: number                 // ★ 页码锚点,不可为空
+  page: number                 // ★ 锚点,不可为空
   kind: 'claim' | 'method' | 'result' | 'limitation' | 'definition'
   text: string                 // 一个论断,不跨主题
-  method?: string
-  dataset?: string
-  metrics?: Array<{ name: string; value: string }>
-  confidence: 'high' | 'medium' | 'low'
   evidence: { quote: string; page: number }
+  confidence: 'high' | 'medium' | 'low'
+  links?: Array<{ to: string; rel: 'supports' | 'contradicts' | 'extends' }>
 }
 
-// ---------- 方法 → 工具(预留,对应队友方案的 B 层)----------
-type MethodTool = {
+// ===== B 工具库 =====
+type MethodSpec = {
   methodId: string
   paperId: string
   name: string
-  params: Array<{ name: string; type: string; required: boolean }>
+  params: Array<{ name: string; type: string; required: boolean; default?: unknown; description: string }>
   preconditions: string[]
-  evidencePage: number
+  evidencePage: number         // ★ 方法出自第几页
+  supportLevel: 'unsupported' | 'L1' | 'L2'
 }
 
-// ---------- 运行追踪 ----------
+type GeneratedTool = {
+  toolName: string             // 注册到 registry 的名字
+  fromMethod: string           // methodId
+  sourcePaper: string
+  status: 'draft' | 'active'   // smoke test 通过才 active
+  smokeTest: { input: unknown; expect: string; passed: boolean; lastRun?: string }
+}
+
+// ===== C 技能库 =====
+type Skill = {
+  skillId: string
+  name: string
+  domain: string
+  version: string
+  loadWhen: { keywords: string[]; taskTypes: string[] }
+  sections: {
+    domainMap: string[]              // 1. 领域地图(≤20 节点)
+    workflow: Array<{ stage: string; input: string; action: string; criteria: string }>  // 2. 标准流程
+    toolMapping: Array<{ method: string; tool: string }>   // 3. 方法→工具
+    failureModes: string[]           // 4. 常见失败模式(≥3)
+    terminology: Array<{ term: string; disambiguation: string }>  // 5. 术语消歧
+    evidenceIndex: Array<{ claim: string; noteId: string }>       // 6. 证据索引
+    negativeConstraints: string[]    // 7. 不要做什么
+  }
+  status: 'draft' | 'needs_review' | 'active' | 'incomplete'   // D-05:人工审核后才 active
+}
+
+// ===== 运行追踪 =====
 type RunTrace = {
   runId: string
-  question: string
+  mode: 'ingest' | 'ask'
   startedAt: string
   turns: number
   tokens: { input: number; output: number }
   toolCalls: Array<{ name: string; ms: number; status: 'ok' | 'error' }>
-  failures: Array<{ stage: string; paperId?: string; message: string }>
+  failures: Array<{ stage: string; ref?: string; message: string }>
 }
 ```
 
-**三条数据铁律**:
-1. 无 `page` 锚点的信息不得进入沉淀层。
-2. 无 `paperId` 的产出不得进入交付物。
-3. `parseQuality.pagesParsed / pagesTotal < 0.7` 的论文标记 `quarantined`,不参与抽取。
+**四条数据铁律**:
+1. 无 `page` 锚点的信息不得进入 A 知识库。
+2. 无 `evidencePage` 的方法不得进入 B 工具库。
+3. `parseQuality < 0.7` 的论文标记 `quarantined`,不参与抽取。
+4. 技能未经人工审核不得转 `active`。
 
-### 8.2 接口契约(两个冻结文件)
+### 8.2 三个冻结契约
 
 ```ts
-// ===== src/tools/types.ts ===== 全队只读,改它要过评审
+// ===== ① src/tools/types.ts — 全队只读 =====
 export type ToolResult =
   | { kind: 'ok'; data: unknown; summary: string }
   | { kind: 'recoverable_error'; message: string; hint?: string }
   | { kind: 'fatal_error'; message: string }
 
 export interface Tool<In = unknown> {
-  name: string                                  // 唯一, snake_case
-  description: string                           // 给模型看的,决定它会不会用
-  inputSchema: JsonSchema                       // 由 zod 转出
+  name: string
+  description: string              // 决定模型会不会调用它,写好
+  inputSchema: JsonSchema
   call(input: In, ctx: ToolContext): Promise<ToolResult>
 }
 
 export interface ToolContext {
-  signal: AbortSignal                           // 中断
+  signal: AbortSignal
   onProgress?: (e: { step: string; done: number; total: number }) => void
-  trace: TraceWriter                            // 写 JSONL
-  cache: Cache                                  // fixtures 读写
+  trace: TraceWriter
+  cache: Cache
   mode: 'live' | 'replay'
 }
 
-// ===== src/services/knowledge/types.ts ===== 可插拔存储契约
+// ===== ② src/services/knowledge/types.ts — 可插拔存储 =====
 export interface KnowledgeStore {
   put(note: AtomicNote): Promise<void>
   get(noteId: string): Promise<AtomicNote | null>
   search(query: string, limit?: number): Promise<AtomicNote[]>
-  link(from: string, to: string, rel: 'supports' | 'contradicts' | 'extends'): Promise<void>
+  link(from: string, to: string, rel: AtomicNote['links'][number]['rel']): Promise<void>
+}
+
+// ===== ③ src/services/skills/types.ts — 技能加载 =====
+export interface SkillStore {
+  list(): Promise<Array<Pick<Skill, 'skillId' | 'name' | 'domain' | 'loadWhen' | 'status'>>>
+  load(skillId: string): Promise<Skill | null>
+  match(task: string): Promise<Skill | null>     // 按 loadWhen 匹配
+  save(skill: Skill): Promise<void>
 }
 ```
 
 ### 8.3 存储布局
 
 ```
-out/                          # 交付物(入库可,便于回看)
-  report.md
-  evidence.csv
-  prisma.md
-  run-<runId>.json            # RunTrace 摘要
+data/                    # 原始论文与大文件(不入库,README 豁免)
+  papers/<paperId>.pdf
 
-knowledge/                    # 知识沉淀(入库)
+knowledge/               # A 知识库(入库)
   <paperId>/
-    meta.md                   # frontmatter + 论文级摘要
-    notes.md                  # 原子知识页,锚点引用
+    meta.md              # frontmatter + 论文级摘要
+    notes.md             # 原子知识页
     _index.json
 
-fixtures/                     # 回放数据(必须入库)
-  arxiv_<query-hash>.json
-  pdf_<paperId>.txt
+tools/generated/         # B 工具库(入库)
+  <toolName>.ts          # 生成的工具
+  <toolName>.test.ts     # smoke test
+  registry.generated.ts  # 自动生成的注册表
 
-logs/                         # 运行 trace(不入库)
-  <runId>.jsonl
+skills/                  # C 技能库(入库)
+  <skillId>.md           # 七节结构
+  _index.json
 
-data/                         # 大文件/真实数据集(不入库,仅 README 与 fixtures 例外)
+out/                     # 交付物
+  run-<runId>.json
+  <task>-report.md
+
+fixtures/                # 回放数据(必须入库)
+logs/                    # trace(不入库)
 ```
 
-### 8.4 错误与降级策略
+### 8.4 错误与降级
 
-| 故障 | 处理 | 用户可见行为 |
+| 故障 | 处理 | 可见行为 |
 |---|---|---|
-| LLM 429 / 超时 | 指数退避重试 2 次 → 切换备用 provider → 失败则中止并保留产出 | 打印「已重试 2 次,切换 provider」 |
-| 单篇 PDF 解析失败 | 标记 `quarantined`,跳过,计入失败清单 | 终态报告标注「3 篇解析失败,未纳入」 |
-| 单个工具抛异常 | 收敛为 `recoverable_error` 回填模型 | 模型可自行换策略 |
-| 检索无结果 | 提示放宽检索式,中止链路 | 明确的下一步建议 |
-| 子 agent 超时 | 该篇跳过,不阻塞其他 | 并发进行,最后汇总失败项 |
-| 触顶 `MAX_TURNS` | 安全退出,输出当前已有结果 | 「已达轮次上限,以下为部分结果」 |
+| LLM 429 / 超时 | 退避重试 2 次 → 切备用 provider → 中止并保留产出 | 「已重试 2 次,切换 provider」 |
+| 单篇解析失败 | `quarantined` 跳过,计入失败清单 | 「3 篇解析失败,未纳入」 |
+| **工具生成失败** | 降级为参数模板 + 人工填写,标 `draft` | 「工具 T 生成失败,已降级为模板」 |
+| **技能生成失败** | 允许手工编写技能,功能不受影响 | 「技能草案生成失败,请手工编写」 |
+| 技能 `incomplete` | 拒绝加载,提示缺哪一节 | 「技能缺第 4 节失败模式,拒绝加载」 |
+| 工具抛异常 | 收敛为 `recoverable_error` 回填模型 | 模型可换策略 |
+| 子 agent 超时 | 该篇跳过,不阻塞其他 | 汇总失败项 |
+| 触顶 `MAX_TURNS` | 安全退出,输出已有结果 | 「已达轮次上限,部分结果」 |
 
-**总原则**:任何情况下进程**不得崩溃**,必须产出一个「部分结果 + 失败说明」。
+**总原则**:任何情况下进程不崩溃,必须产出「部分结果 + 失败说明」。
 
 ### 8.5 上下文与成本控制
 
-不实现完整的 `compact`(自动摘要历史),采用更简单可靠的三条策略:
+1. **单篇隔离**:每篇论文在子 agent 独立上下文处理,主上下文只收结构化摘要(最有效省 token 手段)。
+2. **分段 + 局部摘要**:超长论文按章节分段抽取再合并。
+3. **预算硬闸**:`MAX_TOTAL_TOKENS` 触发即中止并输出已有结果。
+4. **技能按需加载**:不把全部技能塞进 system prompt(AC-C3.2),这既省 token 又提升准确率。
 
-1. **单篇精读隔离**:每篇 PDF 在子 agent 的独立上下文里处理,主上下文只收结构化摘要(这是最有效的省 token 手段)。
-2. **分段 + 局部摘要**:单篇超长时按章节分段抽取,再合并,不把全文塞进一次请求。
-3. **预算硬闸**:`MAX_TOTAL_TOKENS` 触发时中止并输出已有结果。
+### 8.6 权限模型(轻量)
 
-### 8.6 权限与安全
-
-本项目**不实现** Claude Code 那套交互式权限确认(单人本地运行,无需)。但保留三点:
-
-- 工具白名单机制(子 agent 只能调授权工具)—— 这是权限模型的雏形
-- 文件写入限定在 `out/`、`knowledge/`、`logs/`、`fixtures/` 四个目录
-- 密钥只从环境变量读取,不落盘、不入库、不进 trace 日志
+不实现交互式权限确认(单人本地运行)。保留三点:
+- **工具白名单**(子 agent 只能调授权工具)—— 权限模型雏形
+- **文件写入限定**在 `knowledge/`、`tools/generated/`、`skills/`、`out/`、`logs/`、`fixtures/`
+- 密钥只从环境变量读,不落盘、不入 trace
 
 ---
 
 ## 9. 技术选型
 
-### 9.1 依赖清单
+### 9.1 依赖
 
 | 类别 | 选型 | 理由 |
 |---|---|---|
-| 语言 | TypeScript | tool_use 结构化解析与 JSON Schema 的类型安全收益最大 |
-| 运行时 | Node 24(直接跑 `.ts`) | 免构建,省半天;限制:不能用 `enum`/`namespace`,import 需带扩展名 |
-| 包管理 | npm(**不混用 pnpm**) | 团队最熟,少一个争论点 |
-| LLM | `@anthropic-ai/sdk`(主)+ OpenAI 兼容(备) | 只用作 API 客户端,agent 逻辑全自研 |
+| 语言 | TypeScript | tool_use 解析与 JSON Schema 类型安全收益最大 |
+| 运行时 | Node 24(直接跑 `.ts`) | 免构建省半天;限制:不用 `enum`/`namespace`,import 带扩展名 |
+| 包管理 | npm(不混用 pnpm) | 少一个争论点 |
+| LLM | `@anthropic-ai/sdk`(主)+ OpenAI 兼容(备) | 只作 API 客户端,agent 逻辑自研 |
 | 校验 | `zod` + `zod-to-json-schema` | 一处定义,同时产出 JSON Schema 与运行时校验 |
-| PDF | `pdfjs-dist` 或 `unpdf`;arXiv 优先官方 HTML/元数据 API | PDF 解析只作降级路径,质量方差太大 |
-| 终端 | `chalk` | 最小化;不上 Ink/React |
-| 测试 | `node:test` | 零配置,`node --test` |
-| 日志 | 自写 JSONL | 比日志库更适合回放与演示 |
+| PDF | `pdfjs-dist` 或 `unpdf`;arXiv 优先官方 API | PDF 只作降级 |
+| 终端 | `chalk` | 最小化 |
+| 测试 | `node:test` | 零配置 |
+| 日志 | 自写 JSONL | 便于回放与演示 |
 
 ### 9.2 明确不引入
 
-- ❌ 任何 Agent 框架(LangChain / AutoGen / Vercel AI SDK 的 agent 层)
-- ❌ 数据库 / 向量库(4 天内本地 Markdown + 关键词检索足够)
-- ❌ ORM、DI 容器、状态管理库
+- ❌ Agent 框架(LangChain / AutoGen / Vercel AI SDK agent 层)
+- ❌ 数据库 / 向量库(v1.0 用本地 Markdown + 关键词检索)
+- ❌ ORM / DI 容器 / 状态管理库
 - ❌ UI 框架(Ink / React / TUI 库)
-- ❌ 格式化门禁(eslint 可装但不作为 CI 阻塞项)
+- ❌ 格式化门禁(eslint 可装但不阻塞 CI)
 
-### 9.3 环境变量约定
+### 9.3 环境变量
 
-见 `.env.example`。核心变量:`LLM_PROVIDER`、`*_API_KEY`、`*_MODEL`、`MAX_TURNS`、`MAX_TOTAL_TOKENS`、`REQUEST_TIMEOUT_MS`、`DEMO_MODE`、`FIXTURES_DIR`、`TRACE_DIR`。
+见 `.env.example`:provider key / model / `MAX_TURNS` / `MAX_TOTAL_TOKENS` / `REQUEST_TIMEOUT_MS` / `DEMO_MODE` / `FIXTURES_DIR` / `TRACE_DIR`。
 
 ### 9.4 已知环境约束(实测)
 
 | 约束 | 现象 | 处理 |
 |---|---|---|
-| 代理 | 命令行工具不读 Windows 系统代理,直连 `github.com:443` 超时 21s | 显式 `git config http.proxy` / 设 `HTTPS_PROXY` |
-| 路径含空格 | `credential.helper` 的路径参数被截断 | 凭据写在 remote URL;脚本路径加引号 |
-| 换行符 | Windows/macOS 混用导致满屏 diff | 已配 `.gitattributes`(`* text=auto eol=lf`) |
+| 代理 | 命令行工具不读 Windows 系统代理,直连 `github.com:443` 超时 21s | 显式 `git config http.proxy` / `HTTPS_PROXY` |
+| 路径含空格 | `credential.helper` 路径被截断 | 凭据写 remote URL;脚本加引号 |
+| 换行符 | 跨平台满屏 diff | 已配 `.gitattributes` |
 
 ---
 
@@ -717,104 +820,107 @@ data/                         # 大文件/真实数据集(不入库,仅 README �
 ```
 hackathon-agent/
 ├── src/
-│   ├── main.ts                    # ① 入口
-│   ├── ui/
-│   │   ├── stream.ts              #   流式输出
-│   │   └── progress.ts            #   工具调用可视化
-│   ├── agent/                     # ③ 编排层(★契约在此)
-│   │   ├── types.ts               #   ★ 冻结契约:Message / ToolCall / RunTrace
-│   │   ├── loop.ts                #   主循环
-│   │   └── subagent.ts            #   子 Agent 派生
-│   ├── tools/                     # ④ 工具层
-│   │   ├── types.ts               #   ★ 冻结契约:Tool / ToolContext / ToolResult
-│   │   ├── registry.ts            #   注册表
-│   │   ├── search/arxiv.ts        #   FR-2
-│   │   ├── screening/index.ts     #   FR-3
-│   │   ├── read/pdf.ts            #   FR-4
-│   │   └── synthesis/index.ts     #   FR-5
-│   ├── services/                  # ⑤ 服务层
+│   ├── main.ts                      # ① CLI 入口(ingest / ask / tools doctor)
+│   ├── ui/{stream.ts,progress.ts}   # ② 交互层
+│   ├── agent/                       # ③ 编排层
+│   │   ├── types.ts                 #    ★ 冻结契约
+│   │   ├── loop.ts                  #    主循环
+│   │   └── subagent.ts              #    子 Agent
+│   ├── tools/                       # ④ 工具层
+│   │   ├── types.ts                 #    ★ 冻结契约
+│   │   ├── registry.ts              #    注册表
+│   │   ├── knowledge/search.ts      #    A:知识检索工具
+│   │   └── generated/               #    B:生成工具 + smoke test
+│   ├── services/                    # ⑤ 服务层
 │   │   ├── llm/{provider.ts,stream.ts,retry.ts}
-│   │   ├── pdf/{parse.ts,quality.ts}
-│   │   ├── knowledge/{types.ts,localMarkdown.ts,kiwifs.ts(可选)}
+│   │   ├── paper/{fetch.ts,parse.ts,quality.ts}      # 共享底座
+│   │   ├── knowledge/{types.ts,localMarkdown.ts,kiwifs.ts?}   # ★A
+│   │   ├── toolsynth/{extract.ts,generate.ts,smoke.ts}        # ★B
+│   │   ├── skills/{types.ts,generate.ts,load.ts}             # ★C
 │   │   ├── trace/{writer.ts,replay.ts}
 │   │   └── cache/fixtures.ts
-│   └── state/
-│       └── memory/index.ts        # ⑥ 文件式记忆
-├── scripts/
-│   └── demo.sh                    # FR-12 一键演示
-├── fixtures/                      # 回放数据(入库)
-├── knowledge/                     # 知识沉淀(入库)
-├── out/                           # 交付物
-├── data/                          # 大文件(仅 README 与 fixtures 入库)
-├── logs/                          # 运行 trace(不入库)
+│   └── state/memory/index.ts        # ⑥ 文件式记忆
+├── scripts/demo.sh
+├── knowledge/                       # A 产物(入库)
+├── skills/                          # C 产物(入库)
+├── tools/generated/                 # B 产物 → 实际在 src/tools/generated
+├── fixtures/                        # 回放(入库)
+├── data/                            # 大文件(仅 README 入库)
+├── out/  logs/
 ├── docs/
-│   ├── SRS.md                     # 本文件
-│   ├── PLAN.md                    # 四天计划
-│   ├── DECISIONS.md               # 决策日志(待建)
-│   ├── wyh/                       # 队友方案文档
-│   └── reference/
-│       └── claude-code-architecture.md
-├── .github/                       # Issue / PR 模板 + CI
+│   ├── SRS.md                       # 本文件
+│   ├── PLAN.md                      # 四天计划
+│   ├── DECISIONS.md                 # 决策日志(待建)
+│   ├── wyh/                         # 队友方案
+│   └── reference/claude-code-architecture.md
+├── .github/
 ├── .env.example
 └── package.json / tsconfig.json
 ```
 
-**边界规则**:
-- `agent/` 不知道具体工具实现,只认 `tools/types.ts` 接口
-- `tools/` 不知道 LLM 存在,只认 `ToolContext`
-- `services/` 不 import `agent/`,保持底层可单测
-- 冻结契约文件(`agent/types.ts`、`tools/types.ts`、`knowledge/types.ts`)改动需 PR + 1 人 approve
+**模块边界规则**:
+- `agent/` 不 import 具体工具实现,只认 `tools/types.ts`
+- `tools/` 不 import LLM,只认 `ToolContext`
+- 三个模块之间**只能通过 8.2 的三个冻结契约交互**,不得直接互相 import 实现
+- 冻结契约改动需 PR + 1 人 approve
 
 ---
 
 ## 11. 里程碑与交付
 
-### 11.1 时间盒(四个硬检查点,过不了就降级)
+### 11.1 四个硬检查点
 
-| 时点 | 检查项 | 未通过的动作 |
+| 时点 | 检查项 | 未通过则 |
 |---|---|---|
-| **D1 10:00** | 每人用自己的 key 成功调通一次 LLM API | 立刻换 provider(最致命的外部依赖) |
-| **D1 12:00** | 选题与范围确认(本文档第 2、3 章签字)+ 契约文件合入 main | **默认按 D-01/2.2 默认值执行**,不再讨论 |
-| **D2 17:00** | 3 个工具中至少 2 个能对真实数据返回结果 | 砍子 Agent(FR-8),退化为单 agent 串行 |
-| **D3 17:00** | `scripts/demo.sh` 一条命令产出终稿 | 冻结新功能,全部人力转 demo 稳定性 |
+| **D1 10:00** | 每人用自己的 key 调通一次 LLM API | 立刻换 provider |
+| **D1 12:00** | Q0/Q1/Q2/Q3 关闭 + 三个冻结契约合入 main | 按本文件默认值执行,不再讨论 |
+| **D2 17:00** | A 知识库闭环跑通(1 篇论文 → ≥5 条知识页 → 可检索) | 砍 B 到 1 个工具,C 改手工编写 |
+| **D3 17:00** | `demo.sh` 一条命令跑通「沉淀 + 消费」闭环 | 冻结新功能,全员转 demo 稳定性 |
 
-### 11.2 里程碑与交付物
+### 11.2 里程碑(纵向薄切片)
 
-| 里程碑 | 目标 | 交付物 | 对应需求 |
+| 里程碑 | 目标 | 三个模块的状态 | 交付物 |
 |---|---|---|---|
-| **M1 · 骨架**(D1) | 主循环跑通一轮 | `main.ts` + `loop.ts` + `types.ts` + 一个 demo 工具 + CLI 可见过程 | FR-1/6/7/12 |
-| **M2 · 核心能力**(D2) | 真实工具可用 | 检索/筛选/精读三工具 + 子 Agent + 记忆 + 回放模式 | FR-2/3/4/8/9/11 |
-| **M3 · 端到端**(D3) | 链路贯通 | 汇总产出三件套 + 知识沉淀 + 固定样例 + 代码冻结 | FR-5/10 |
-| **M4 · 交付**(D4) | 可演示 | demo 脚本 + 3 分钟录屏 + README/幻灯片 + 仓库清理 | 全部 |
+| **M1 · 骨架**(D1) | Agent 内核 + 底座 | A 未开始 / B 未开始 / C 未开始 | 主循环跑通一轮;PaperDoc 能解析 1 篇;三个契约文件在 main |
+| **M2 · 模块立起来**(D2) | A 闭环 + B 首个工具 | **A 可用**(知识页+检索)/ **B L1** 1–2 个工具 / C 未开始 | `ingest` 能产出知识页并可检索 |
+| **M3 · 三层贯通**(D3) | 闭环 + C 技能 | A 完整 / B ≥3 个工具 / **C 1 个技能** | `demo.sh` 跑通沉淀→消费 |
+| **M4 · 交付**(D4) | 可演示 | 三模块均可独立演示 | demo 脚本 + 3 分钟录屏 + README/幻灯片 + 仓库清理 |
 
 ### 11.3 D1 第一小时 checklist
 
 ```
-0) 环境自检      node -v(需 ≥22.18) / git 代理 / API key 连通性
-1) 修仓库        .gitignore 已修(F3 ✅)/ .env.example 已建(F7 ✅)
-2) 写契约        tools/types.ts → agent/types.ts → knowledge/types.ts
-3) 写循环        loop.ts + FakeLLM 单测
-4) 验证一轮      真实 API 调用一次,打印 tool_use
+0) 环境自检     node -v(≥22.18)/ git 代理 / API key 连通性
+1) 仓库已就绪   .gitignore 已修(F3 ✅)/ .env.example 已建(F7 ✅)
+2) 关 Q0~Q3     四个待确认项,10 分钟拍板
+3) 写契约       tools/types.ts → knowledge/types.ts → skills/types.ts
+4) 写循环       loop.ts + FakeLLM 单测 → 真实 API 调通一次
+5) 写底座       paper/parse.ts 解析 1 篇论文出 PaperDoc
 ```
 
 ---
 
 ## 12. 验收标准(量化)
 
-| 编号 | 指标 | 阈值 | 测量方法 |
+| 编号 | 指标 | 阈值 | 测量 |
 |---|---|---|---|
-| A-1 | 端到端成功率 | 连续 3 次全成功 | 直接跑 3 次 |
-| A-2 | 端到端耗时(live) | ≤ 3 分钟 | 计时 |
-| A-3 | 端到端耗时(replay) | ≤ 60 秒 | 计时 |
-| A-4 | 引用可追溯率 | ≥ 95% | 抽 20 条论断人工核对页码 |
-| A-5 | 证据表行数 | ≥ 30 行 | 统计 CSV |
-| A-6 | 解析合格率 | `pagesParsed/pagesTotal ≥ 0.7` 的论文 ≥ 80% | 运行报告 |
-| A-7 | 单次运行 token 成本 | ≤ `MAX_TOTAL_TOKENS` | 运行汇总打印 |
-| A-8 | 断网可用性 | `replay` 模式全程无网络请求 | 断网实测 |
-| A-9 | 新工具接入成本 | 新增 1 个工具 ≤ 30 分钟且不改编排层 | 实测计时 |
-| A-10 | CI 时长 | < 90s | Actions 页面 |
+| A-1 | 三模块独立可演示 | 3/3 | 逐个跑独立命令 |
+| A-2 | 端到端闭环成功率 | 连续 3 次 | 跑 3 次 |
+| A-3 | live 耗时 | ≤ 3 分钟 | 计时 |
+| A-4 | replay 耗时 | ≤ 60 秒 | 计时 |
+| **A-5** | **知识页锚点可验证率** | **≥ 95%** | 抽 20 条人工核对 |
+| A-6 | 单篇论文知识页数 | 5–20 条 | 统计 |
+| **A-7** | **生成工具 smoke 通过率** | **≥ 60%**(≥3 个 active) | `tools doctor` |
+| A-8 | 技能七节完整度 | 100%(7/7) | 校验脚本 |
+| A-9 | 技能加载准确率 | 抽 5 个任务,≥4 次加载正确技能 | 人工核对 |
+| A-10 | 解析合格率 | `pagesParsed/pagesTotal ≥ 0.7` 的论文 ≥ 80% | 运行报告 |
+| A-11 | replay 断网可用 | 0 次网络请求 | 断网实测 |
+| A-12 | 单次 token 成本 | ≤ `MAX_TOTAL_TOKENS` | 运行汇总 |
+| A-13 | CI 时长 | < 90s | Actions |
 
-**答辩时最该报的两个数**:`引用可追溯率`(A-4)与 `单次成本`(A-7)——前者证明不是幻觉,后者证明工程可控。
+**答辩最该报的三个数**:
+- **A-5 锚点可验证率** → 证明不是幻觉
+- **A-7 工具生成通过率** → 证明 B 模块是真能产出,不是摆设
+- **A-9 技能加载准确率** → 证明 C 模块的判断力是真的
 
 ---
 
@@ -822,15 +928,16 @@ hackathon-agent/
 
 | ID | 风险 | 概率 | 影响 | 触发信号 | 应对 |
 |---|---|---|---|---|---|
-| R-1 | 选题/范围反复摇摆 | 中 | 高 | D1 12:00 仍未定 | 按 2.2 默认值自动执行,不再开会 |
-| R-2 | LLM API 不稳 / 额度不足 | 中 | 高 | D1 10:00 调不通或频繁 429 | 双 provider;`replay` 兜底 |
-| R-3 | PDF 解析质量不可控 | **高** | 中 | `parseQuality < 0.7` 比例高 | arXiv HTML 优先;`quarantined` 隔离 |
-| R-4 | 抽取幻觉 | **高** | 高 | 抽查发现无锚点结论 | D-06 硬约束 + A-4 量化抽查 |
-| R-5 | 长文档撑爆上下文 | 中 | 中 | 单篇即超限 | 8.5 的三条策略 |
-| R-6 | 并行开发撞车 | 中 | 中 | 频繁 merge 冲突 | 文件级分工 + 契约先冻结 |
+| **R-1** | **B 工具库跑不通**(方法→可执行代码语义鸿沟) | **高** | 高 | D2 结束 smoke 通过率 0 | D-04 只承诺 L1;失败降级为「参数模板 + 人工填写」,仍可演示 |
+| **R-2** | **C 技能库写成"综述"而非"判断力"** | **高** | 高 | 技能文件像论文摘要 | 七节结构强制 + 人工审核 + 第 4 节失败模式 ≥3 条 |
+| R-3 | 三个模块都做但没一个能用 | 中 | 高 | D2 结束无可用模块 | D-03 纵向薄切片;D2 17:00 检查点强制降级 |
+| R-4 | PDF 解析质量不可控 | 高 | 中 | `parseQuality < 0.7` 比例高 | arXiv HTML 优先;`quarantined` 隔离 |
+| R-5 | 抽取幻觉 | 高 | 高 | 抽查发现无锚点结论 | D-07 硬约束 + A-5 量化抽查 |
+| R-6 | LLM API 不稳/额度不足 | 中 | 高 | 频繁 429 | 双 provider;replay 兜底 |
 | R-7 | 现场网络故障 | 中 | 高 | — | `DEMO_MODE=replay` + 录屏 |
-| R-8 | 范围蔓延(想加功能) | **高** | 中 | D3 还想加东西 | 第 3.2 节「明确不做」+ 代码冻结线 |
-| R-9 | 队友环境配置耗时 | 中 | 低 | 有人 D2 还跑不起来 | 用 `replay` 模式让新人零配置参与 |
+| R-8 | 范围蔓延 | 高 | 中 | D3 还想加功能 | 第 3.1「不做」清单 + 代码冻结线 |
+| R-9 | 并行开发撞车 | 中 | 中 | 频繁 merge 冲突 | 三契约先冻结 + 文件级分工 |
+| R-10 | 队友环境配置耗时 | 中 | 低 | D2 还跑不起来 | replay 模式让新人零配置参与 |
 
 ---
 
@@ -840,29 +947,32 @@ hackathon-agent/
 
 | 术语 | 含义 |
 |---|---|
-| **A-core** | 本项目的范围定义:检索→筛选→精读→汇总,砍掉代码生成与排版 |
-| **PaperDoc** | 论文的结构化产物,带页码锚点,是全系统基础契约 |
-| **AtomicNote** | 原子知识页:一个论断一页,必须带 `page` |
+| **PaperDoc** | 论文结构化产物,带页码锚点,全系统基础契约 |
+| **AtomicNote** | 原子知识页:一个论断一页,必带 `page` |
+| **MethodSpec** | 从论文抽出的方法规格(参数/前提/证据页码) |
+| **GeneratedTool** | 由 MethodSpec 生成的可执行工具,smoke 通过才 `active` |
+| **Skill** | 七节结构的领域判断力文件 |
 | **锚点(locator)** | `paperId + page` 组成的可回指坐标 |
 | **quarantined** | 解析质量不合格的论文,被隔离不参与抽取 |
-| **replay** | 从 `fixtures/` 回放外部响应,完全离线 |
-| **冻结契约** | 全队只读的接口文件,改动需评审 |
-| **子 Agent** | 主循环的再实例化,独立上下文 + 工具白名单 |
+| **replay** | 从 `fixtures/` 回放,完全离线 |
+| **纵向薄切片** | 每个模块只做最小可用,优先保证三层贯通 |
+| **冻结契约** | 三个接口文件,全队只读,改动需评审 |
 
-### 14.2 待确认问题清单(Q1 关闭后本文件转 v1.1)
+### 14.2 待确认问题
 
 | 编号 | 问题 | 谁回答 | 期限 |
 |---|---|---|---|
-| Q1 | `kiwi` 是否指 KiwiFS? | 项目负责人 | D1 12:00 |
+| Q0 | 三个模块准确名称是否「个人知识库 / 工具库 / 技能库」 | 项目负责人 | D1 10:00 |
+| Q1 | `kiwi` 是否指 KiwiFS,还是只要求自研 RAG 式私有知识库 | 项目负责人 | D1 12:00 |
 | Q2 | LLM provider 与额度 | 项目负责人 | D1 10:00 |
-| Q3 | 演示形态:CLI 还是网页 | 项目负责人 | D1 12:00 |
-| Q4 | 团队分工(谁负责哪块) | 项目负责人 | D1 12:00 |
-| Q5 | `B1eberz` 是否参与开发 | 项目负责人 | D1 |
+| Q3 | 演示形态 CLI / Web / 两者 | 项目负责人 | D1 12:00 |
+| Q4 | 团队分工 | 项目负责人 | D1 12:00 |
 
 ### 14.3 变更记录
 
-| 版本 | 日期 | 变更 | 作者 |
-|---|---|---|---|
-| v1.0 | 2026-10-27 | 首次综合成文:合并参考文档、PLAN.md 与 wyh 三份文档;以可插拔 KnowledgeStore 化解 A-core / KiwiFS 路线冲突 | — |
+| 版本 | 日期 | 变更 |
+|---|---|---|
+| v1.0 | 2026-10-27 | 首次综合成文(A-core 综述方向) |
+| **v2.0** | 2026-10-27 | **方向修正**:产品改为「科研 Agent + 三个创新模块(知识库/工具库/技能库)」;新增 FR-A/FR-B/FR-C 三组需求;新增「沉淀/消费」双向闭环;B 模块明确分级(L1/L2/L3);C 模块强制七节 + 人工审核;里程碑改为纵向薄切片 |
 
 **变更规则**:新增需求必须回答「砍掉哪个同等工作量的需求作为交换」。不接受纯增量。
