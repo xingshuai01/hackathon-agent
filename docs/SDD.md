@@ -289,6 +289,157 @@ Claude Code:  工具是人写的  →  Agent 用工具
      交付物 + 反哺新知识页
 ```
 
+### 3.4 Web 交互层(薄壳设计)
+
+对应需求:`FR-F1 ~ FR-F4`;决策:`D-11 ~ D-14`
+
+#### 3.4.1 为什么是"薄壳"
+
+科研 Agent 的目标用户是**研究者**,不是工程师 —— 纯 CLI 等于把用户群砍掉一半。但 Web 不该重写核心,否则 4 天内必然分裂出两套逻辑,且 Web 一崩就全崩。
+
+**薄壳的定义(可静态检查)**:
+
+```
+web/ 目录的 import 白名单 = { node 内置模块, ../../agent/events.js }
+web/ 不得 import 任何 services/ · tools/ 实现
+```
+
+`NFR-12` 就是用来卡这条的。
+
+#### 3.4.2 核心思路:一条事件流,两个渲染器
+
+```
+                    ┌──────────────────────────┐
+   核心层(loop.ts) │  emit(event)             │
+   ★不知道谁在消费  │  EventBus                │
+                    └───────────┬──────────────┘
+                                │
+                ┌───────────────┴───────────────┐
+                ▼                               ▼
+      ┌──────────────────┐          ┌────────────────────┐
+      │ 渲染器 A:stdout  │          │ 渲染器 B:SSE → 浏览器│
+      │ chalk 上色       │          │ EventSource        │
+      └──────────────────┘          └────────────────────┘
+              ↑ 兜底                         ↑ 主交付
+```
+
+**关键收益**:Web 层的全部工作只是"把事件翻译成 DOM 操作"。核心一旦跑通,Web 就是纯增量,而且永远不会拖累核心。
+
+#### 3.4.3 事件协议(唯一需要冻结的 Web 契约)
+
+```ts
+// src/agent/events.ts —— CLI 与 Web 共用
+export type AgentEvent =
+  | { type: 'text_delta';      text: string }
+  | { type: 'tool_start';      id: string; name: string; input: unknown }
+  | { type: 'tool_end';        id: string; ok: boolean; ms: number; summary: string }
+  | { type: 'skill_load';      skillId: string; name: string; reason: string }
+  | { type: 'knowledge_hit';   noteId: string; paperId: string; page: number; description: string }
+  | { type: 'tool_generated';  toolName: string; sourcePaper: string; status: 'active' | 'draft' }
+  | { type: 'progress';        step: string; done: number; total: number }
+  | { type: 'error';           stage: string; message: string }
+  | { type: 'run_end';         reason: string; ms: number; tokens: { input: number; output: number }; toolCalls: number }
+```
+
+**9 种事件覆盖全部需要展示的语义。** 新增一种展示需求 = 加一种事件,而不是改核心。
+
+#### 3.4.4 后端(零依赖,约 120 行)
+
+```ts
+// web/server.ts
+import { createServer } from 'node:http'
+import { readFile } from 'node:fs/promises'
+import { bus } from '../agent/events.js'
+
+export async function startWebServer(port = 7777) {
+  const server = createServer(async (req, res) => {
+    const url = new URL(req.url!, `http://${req.headers.host}`)
+
+    // ① SSE 事件流
+    if (url.pathname === '/events') {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      })
+      const send = (e: AgentEvent) => res.write(`data: ${JSON.stringify(e)}\n\n`)
+      bus.on('event', send)
+      req.on('close', () => bus.off('event', send))
+      return
+    }
+
+    // ② 任务提交(触发一次 ask,事件仍走 SSE)
+    if (url.pathname === '/api/ask' && req.method === 'POST') {
+      const { question } = JSON.parse(await readBody(req))
+      res.writeHead(202).end('accepted')
+      void runAsk(question)          // 异步执行,事件推进 SSE
+      return
+    }
+
+    // ③ 三个模块面板的数据(直接读文件系统)
+    if (url.pathname === '/api/knowledge') return json(res, await loadNotes())
+    if (url.pathname === '/api/tools')     return json(res, await loadTools())
+    if (url.pathname === '/api/skills')    return json(res, await loadSkills())
+
+    // ④ 静态文件(单页 HTML,无构建)
+    return serveStatic(res, url.pathname)
+  })
+
+  // 端口占用自动顺延(AC-F4.3)
+  for (let p = port; p < port + 20; p++) {
+    try { await listen(server, p); return p }
+    catch (e: any) { if (e.code !== 'EADDRINUSE') throw e }
+  }
+  throw new Error('no free port')
+}
+```
+
+> **注意 `/api/ask` 立刻返回 202,不阻塞** —— 事件继续走 SSE 通道。这样即使一次运行要 3 分钟,浏览器也不会卡在 loading。
+
+#### 3.4.5 前端(单页 HTML,约 500 行)
+
+**布局设计** —— 重点是把"三模块资产"放在显眼位置,而不是做成一个聊天框:
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  hackathon-agent · 科研 Agent        [ 沉淀 ingest ]  [ 提问 ask ]     │
+├────────────────────┬─────────────────────────────────────────────────┤
+│  📚 知识库  12 条   │  ◀ 过程流(SSE 实时)                            │
+│  🔧 工具库   5 个   │  ┌─────────────────────────────────────────────┐│
+│  📋 技能库   1 个   │  │ > 低资源 RAG 有哪些方法?                    ││
+│                    │  │ ⚙ knowledge.search  "低资源 RAG"  120ms  ✓  ││
+│  ── 点击展开 ──     │  │ ⚙ compute_f1        {p:0.82,r:0.77} 8ms ✓  ││
+│                    │  │ 📋 加载技能 低资源语言RAG研究(匹配关键词)  ││
+│  ┌──────────────┐  │  │ 📚 引用 p3f8a2c1#p7#a91f3e (p.7)            ││
+│  │ 跨语言对齐    │  │  │                                             ││
+│  │ 提升 4.2 点   │  │  │ 答:主要方法有三类……(流式)                  ││
+│  │ p3f8a2c1 p.7 │  │  └─────────────────────────────────────────────┘│
+│  └──────────────┘  │  ┌── 产物 ──────────────────────────────────────┐│
+│                    │  │ out/report.md   out/run-xxx.json            ││
+└────────────────────┴──┴─────────────────────────────────────────────┘
+```
+
+**三个面板的实现要点**:
+
+| 面板 | 渲染什么 | 数据来源 |
+|---|---|---|
+| A 知识库 | 知识页卡片(描述 + 锚点),点开看全文与证据摘句 | `GET /api/knowledge` → 读 `knowledge/` |
+| B 工具库 | 工具卡片(名称 + active/draft 徽章 + 来源论文 + smoke 状态) | `GET /api/tools` → 读 `src/tools/generated/` |
+| C 技能库 | 技能卡片,七节折叠,失败模式一节默认展开且高亮 | `GET /api/skills` → 读 `skills/` |
+
+**实时更新**:`run_end` 事件到达时,三个面板各自重新 `fetch` 一次 —— 于是用户能**眼看着**知识页从 0 变成 12、工具从 0 变成 5。这就是"资产在增长"的可视化。
+
+#### 3.4.6 降级策略(必须实现)
+
+| 情况 | 行为 |
+|---|---|
+| 端口全被占 | 打印「Web 启动失败,请用 CLI」,**进程不退出** |
+| 前端 JS 报错 | 页面仍可显示静态内容;CLI 不受影响 |
+| 无 CDN / 断网 | 所有资源本地内联,页面正常打开(AC-F4.5) |
+| 演示现场 Web 崩了 | 立刻切 CLI,同一套逻辑(AC-F4.4) |
+
+**核心原则**:Web 是增强,不是依赖。`D-12` 的薄壳约束就是为了保证这一点。
+
 ---
 
 ## 4. 核心契约设计
@@ -948,7 +1099,16 @@ export async function runSubAgent(spec: SubAgentSpec, ctx: ParentCtx): Promise<S
 hackathon-agent/
 ├── src/
 │   ├── main.ts                        # 入口:ingest / ask / tools doctor
-│   ├── ui/{stream.ts,progress.ts}
+│   ├── ui/                            # 渲染器(消费事件流)
+│   │   ├── events.ts                  # ★ 事件总线契约(CLI/Web 共用)
+│   │   ├── renderCli.ts               #   CLI 渲染器(chalk)
+│   │   └── progress.ts                #   进度条
+├── web/                               # Web 薄壳(不得 import services/)
+│   ├── server.ts                      #   node:http + SSE(约 120 行)
+│   └── public/
+│       ├── index.html                 #   单页,零构建零框架
+│       ├── app.js                     #   EventSource + DOM 渲染(约 500 行)
+│       └── style.css                  #   手写 CSS,无 CDN
 │   ├── agent/
 │   │   ├── types.ts                   # ★ 冻结契约
 │   │   ├── loop.ts                    # 主循环(目标 150-250 行)
@@ -1001,12 +1161,15 @@ hackathon-agent/
 | LLM | `@anthropic-ai/sdk` 主 + OpenAI 兼容备 | `sideQuery` 用于便宜模型做相关性筛选 |
 | PDF | `pdfjs-dist` / `unpdf`;arXiv 官方 API 优先 | PDF 只作降级 |
 | 终端 | `chalk` | 不上 Ink/React |
+| **Web 后端** | **Node 内置 `http` + SSE** | 零依赖;事件是单向的,SSE 比 WebSocket 简单一个量级 |
+| **Web 前端** | **单页 HTML + 原生 JS + 手写 CSS** | 零构建、零框架、零 CDN。不引入构建链 = 没有构建失败风险 |
 | 测试 | `node:test` | 零配置 |
 | 日志 | 自写 JSONL | 便于回放 |
 
 ### 12.2 明确不引入
 
 ❌ Agent 框架(LangChain/AutoGen)· 向量库 · 数据库 · ORM/DI · UI 框架 · 格式化门禁
+❌ **Web 侧的**:React/Vue/Vite/Next · Express/Koa/Fastify · Tailwind 构建版 · 任何 CDN 依赖
 
 ### 12.3 环境约束(实测)
 
@@ -1031,10 +1194,10 @@ hackathon-agent/
 
 | 天 | 主线 | 交付物 | 完成判据 |
 |---|---|---|---|
-| **D1** | 契约 + 底座 + 循环 | `tools/types.ts`、`agent/types.ts`、`knowledge/types.ts`、`loop.ts`、`paper/parse.ts` | 主循环跑通一轮;1 篇论文能出 `PaperDoc` |
-| **D2** | A 闭环 + B 首个工具 | `knowledge/*`、`toolsynth/extract.ts`、`render.ts`、`smoke.ts` | `ingest` 产出 ≥5 条知识页且可检索;**≥1 个工具 active** |
-| **D3** | C 技能 + 三层贯通 | `skills/*`、`registry` 接生成工具、`main.ts ask` | `demo.sh` 跑通「沉淀 → 消费」闭环 |
-| **D4** | 打磨与交付 | demo 脚本、录屏、README/幻灯片、仓库清理 | 三个模块各自可独立演示 |
+| **D1** | 契约 + 底座 + 循环 + **事件总线** | `tools/types.ts`、`agent/types.ts`、`knowledge/types.ts`、`ui/events.ts`、`loop.ts`、`paper/parse.ts` | 主循环跑通一轮;1 篇论文能出 `PaperDoc`;事件流能在 stdout 打印 |
+| **D2** | A 闭环 + B 首个工具 + **Web 骨架** | `knowledge/*`、`toolsynth/extract.ts`、`render.ts`、`smoke.ts`、`web/server.ts`、`index.html` | `ingest` 产出 ≥5 条知识页且可检索;≥1 个工具 active;**浏览器能看到流式输出** |
+| **D3** | C 技能 + 三层贯通 + **三面板** | `skills/*`、`registry` 接生成工具、`/api/{knowledge,tools,skills}`、`app.js` 完整渲染 | 一条命令跑通「沉淀 → 消费」;**三个面板实时显示资产增长** |
+| **D4** | 打磨与交付 | 降级策略、录屏、README/幻灯片、仓库清理 | Web 与三模块各自可独立演示;Web 崩了能秒切 CLI |
 
 ### 13.3 四个硬检查点
 
@@ -1049,11 +1212,13 @@ hackathon-agent/
 
 | 角色 | 负责 | 文件范围 |
 |---|---|---|
-| **基础设施** | 契约 + 主循环 + 底座 + LLM 层 | `agent/`、`services/paper/`、`services/llm/` |
+| **基础设施** | 契约 + 主循环 + 事件总线 + LLM 层 + 底座 | `agent/`、`ui/events.ts`、`services/paper/`、`services/llm/` |
 | **A + C** | 知识库 + 技能库 | `services/knowledge/`、`services/skills/`、`tools/knowledge/` |
-| **B + 演示** | 工具库 + CLI + demo | `services/toolsynth/`、`tools/generated/`、`main.ts`、`scripts/` |
+| **B + Web + 演示** | 工具库 + Web 薄壳 + demo 脚本 | `services/toolsynth/`、`tools/generated/`、`web/`、`scripts/` |
 
-**文件级隔离,不交叉改同一文件。** 三契约由「基础设施」一人独写后冻结。
+**文件级隔离,不交叉改同一文件。** 三契约 + 事件总线由「基础设施」一人独写后冻结。
+
+> ⚠️ Web 工作量约 1–1.5 天,落在第三人身上偏重。若 D2 17:00 检查点未过,按 SRS §3.3 的裁剪顺序砍**子 Agent 并行**与**技能自动生成**,把工时让给 Web —— 因为 Web 是卖点的呈现方式。
 
 ### 13.5 D1 第一小时 checklist
 
@@ -1152,5 +1317,6 @@ node src/main.ts ask "帮我规划一个低资源 RAG 实验"  # 看技能被加
 | 版本 | 日期 | 变更 |
 |---|---|---|
 | v1.0 | 2026-10-28 | 首次成文。基于 Claude Code 源码四模块实读结论,产出架构映射、四份核心契约、数据模型、主循环设计、三模块详细设计、目录结构、4 天开发计划 |
+| **v1.1** | 2026-10-28 | **新增 §3.4 Web 交互层(薄壳设计)**:一条事件流两个渲染器、9 种事件协议、零依赖后端、单页前端、三模块可视化面板布局、四项降级策略;目录结构新增 `web/`;技术选型补充 http+SSE 与零构建前端;开发计划与分工相应调整 |
 
 **变更规则**:设计变更必须同步更新第 1 章「设计依据」中对应的源码引用,保持可追溯。
