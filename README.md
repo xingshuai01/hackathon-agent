@@ -57,11 +57,31 @@
 
 | 文档 | 内容 |
 |---|---|
+| **[`AGENTS.md`](AGENTS.md)** | **AI 编码工具必读** —— 六条硬约束速查(契约/依赖/any/消息格式/不 throw/薄壳) |
+| **[`docs/CODE-RULES.md`](docs/CODE-RULES.md)** | **代码编写规则** —— 十条铁律、模块边界、错误处理、AI 作业协议、检查器映射表 |
 | [`docs/PLAN.md`](docs/PLAN.md) | 早期四天计划(部分内容已被 SRS/SDD 取代) |
 | [`docs/wyh/`](docs/wyh/) | 队友方案:仓库分析建议 / 代码开发规范 / 需求可行性分析 |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | 分支 / commit / PR / 任务认领规范 |
 | [`docs/reference/claude-code-architecture.md`](docs/reference/claude-code-architecture.md) | Claude Code 架构分析(原始参考资料) |
 | `.env.example` | 环境变量清单,复制为 `.env` 后填写 |
+
+## 契约文件(冻结,改动需 PR)
+
+代码已起步:`src/` 下有 **6 个冻结契约文件**,任何人(含 AI)不得改其既有签名。
+
+| 契约 | 管什么 |
+|---|---|
+| `src/ui/events.ts` | 9 种 Agent 事件 + EventBus(CLI/Web 共用的唯一接口) |
+| `src/tools/types.ts` | Tool 接口、fail-closed 能力位、三段式调用管线 |
+| `src/agent/types.ts` | Message(DeepSeek 格式)、5 种终止 reason、并发分区 |
+| `src/services/knowledge/types.ts` | AtomicNote、KnowledgeStore、锚点校验 |
+| `src/services/skills/types.ts` | Skill 七节结构、SkillStore、结构校验 |
+| `src/services/paper/types.ts` | PaperDoc、解析质量门控 |
+
+```bash
+npm run verify   # typecheck + 规则检查 + 38 个契约测试
+```
+
 
 ## 四天日程
 

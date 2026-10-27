@@ -1,0 +1,23 @@
+{
+  "name": "hackathon-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "科研领域 Agent:知识库 / 工具库 / 技能库三个创新模块",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --experimental-test-isolation=none \"test/**/*.test.ts\"",
+    "check:rules": "node scripts/check-rules.mjs",
+    "verify": "npm run typecheck && npm run check:rules && npm test"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}
