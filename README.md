@@ -19,6 +19,7 @@
 
 | 文档 | 内容 |
 |---|---|
+| **[`docs/SRS.md`](docs/SRS.md)** | **需求说明书(唯一功能基线)** —— 架构、功能需求、数据模型、接口契约、验收指标 |
 | [`docs/PLAN.md`](docs/PLAN.md) | 四天里程碑、任务拆解、验收标准、风险 |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | 分支 / commit / PR / 任务认领规范(4 天轻量版) |
 | [`docs/reference/claude-code-architecture.md`](docs/reference/claude-code-architecture.md) | 原始选题与技术框架参考资料(Claude Code 架构分析) |
