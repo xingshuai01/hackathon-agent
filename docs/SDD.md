@@ -107,8 +107,8 @@ readonly alwaysLoad?: boolean
 
 | 事实 | 出处 | 我们的取舍 |
 |---|---|---|
-| **不依赖 `stop_reason`**,遍历 content 找 `type==='tool_use'` | `query.ts:553-556, 829` | ✅ **必须采纳**,否则跨 provider 会漏调工具 |
-| `tool_result` 必须包在 **user 消息**内,且不与普通 user 文本交错 | `query.ts:1535-1536` | ✅ **必须采纳**,违反 API 直接报错 |
+| **不依赖 `stop_reason`**,遍历 content 找 `type==='tool_use'` | `query.ts:553-556, 829` | ⚠️ **思想采纳,写法必改**:DeepSeek 靠 `message.tool_calls` 数组判断(DEC-029) |
+| `tool_result` 必须包在 **user 消息**内,且不与普通 user 文本交错 | `query.ts:1535-1536` | ❌ **不采纳** —— 这是 Anthropic 专属。DeepSeek 要求独立的 `role:'tool'` 消息(DEC-029) |
 | 消息**只追加不重写** | `query.ts:1716` | ✅ 采纳 |
 | 并发靠 `partitionToolCalls`:把**连续** `isConcurrencySafe` 的调用合批,默认上限 10 | `toolOrchestration.ts:91, 158-176` | ✅ 采纳(上限调为 3) |
 | 模型还在流式输出时,已完成工具的结果就已可 yield(**执行与生成重叠**) | `query.ts:851-862` | ❌ v1.0 不做,复杂度收益比不划算 |
@@ -510,18 +510,27 @@ export const TOOL_DEFAULTS = {
 
 ### 4.2 `src/agent/types.ts`
 
+> ⚠️ **格式适配说明(重要)**:Claude Code 用 **Anthropic 消息格式**(`content` 块数组 + `tool_result` 嵌在 user 消息里)。
+> 我们定的是 **DeepSeek(OpenAI 兼容格式)**,两者的工具调用协议不同。
+> **第 1 章记录的源码事实仍然有效(设计思想),但具体消息结构必须按 DeepSeek 写。**
+
 ```ts
-export type Role = 'user' | 'assistant'
+// ══════ DeepSeek / OpenAI 兼容格式 ══════
+export type Message =
+  | { role: 'system';    content: string }
+  | { role: 'user';      content: string }
+  | { role: 'assistant'; content: string | null; tool_calls?: ToolCall[] }
+  | { role: 'tool';      tool_call_id: string; content: string }   // ★ 独立消息
 
-export interface Message {
-  role: Role
-  content: ContentBlock[]
+export interface ToolCall {
+  id: string
+  type: 'function'
+  function: {
+    name: string
+    /** ★ 注意:这是 JSON **字符串**,不是对象。必须 JSON.parse 后才能用 */
+    arguments: string
+  }
 }
-
-export type ContentBlock =
-  | { type: 'text'; text: string }
-  | { type: 'tool_use'; id: string; name: string; input: unknown }
-  | { type: 'tool_result'; tool_use_id: string; content: string; is_error?: boolean }
 
 /** 终止 reason —— 从 Claude Code 的 10 种裁剪为 5 种,够调试用 */
 export type LoopEndReason =
@@ -720,21 +729,28 @@ loop(messages, opts):
         results.push(...r)
 
     ── ⑥ 回填 ─────────────────────────────
-    // ★ tool_result 必须全包在一条 user 消息内,不与普通文本交错
-    messages.push(assistantMsg)
-    messages.push({ role:'user', content: results.map(toToolResult) })
+    // ★ DeepSeek/OpenAI 格式:assistant 消息带 tool_calls,
+    //   然后每个 tool_call 各回一条独立的 role:'tool' 消息
+    messages.push({ role:'assistant', content: text, tool_calls: toolCalls })
+    for (const r of results)
+        messages.push({ role:'tool', tool_call_id: r.id, content: r.text })
 
     ── ⑦ 循环 ─────────────────────────────
   return { reason:'max_turns', messages }   // 保留已有产出
 ```
 
-### 6.3 三条实现红线
+### 6.3 四条实现红线
 
-| 红线 | 说明 | 出处 |
-|---|---|---|
-| **不读 `stop_reason`** | 遍历 `content` 块找 `type==='tool_use'`。`stop_reason` 在跨 provider 时不可靠 | `query.ts:553-556` |
-| **`tool_result` 全包在一条 user 消息** | 且**不能**和普通 user 文本交错,否则 API 报错 | `query.ts:1535-1536` |
-| **工具异常不抛** | `catch` → `<tool_error>{msg}</tool_error>` + `is_error:true` 回填,由模型决定下一步 | `toolExecution.ts:469` |
+> 前三条改写自 Claude Code 的原始经验,**但已按 DeepSeek 的 OpenAI 兼容格式适配**。
+> 直接照抄 Anthropic 格式会 API 报错 —— 这是 D1 最容易踩的坑。
+
+| 红线 | 说明 |
+|---|---|
+| **① 靠 `tool_calls` 数组判断,不靠 `finish_reason`** | 模型返回后先看 `message.tool_calls` 是否存在且非空。`finish_reason` 仅用于诊断日志(它是 `stop / length / content_filter / tool_calls / insufficient_system_resource / aborted`) |
+| **② 每条工具结果是一条独立的 `role:'tool'` 消息** | 带 `tool_call_id` 回指对应的 `ToolCall.id`。**不是**嵌在 user 消息里(那是 Anthropic 格式)。必须**每个 tool_call 都回填**,漏一条 API 直接报错 |
+| **③ `arguments` 是 JSON 字符串,必须 parse 后校验** | DeepSeek 官方明确提示「模型并不总是生成有效的 JSON,且可能臆造 schema 未定义的参数」。`JSON.parse` 失败 → 回填错误文本让模型重试,**不要抛** |
+| **④ 工具异常不抛** | `catch` 后回填 `role:'tool'` 消息 + 错误文本,由模型决定下一步(采纳 `toolExecution.ts:469` 的思想,格式换成 OpenAI) |
+
 
 ### 6.4 并发分区
 
@@ -1158,7 +1174,7 @@ hackathon-agent/
 | 运行时 | Node 24 **直接跑 .ts**(类型剥离) | 免构建省半天;限制:不用 `enum`/`namespace`,import 带扩展名 |
 | 包管理 | npm | 团队最熟,不混用 pnpm |
 | Schema | **zod v4** + 原生 `z.toJSONSchema` | 采纳 Claude Code 单源 schema 设计(`FileReadTool.ts:227`) |
-| LLM | `@anthropic-ai/sdk` 主 + OpenAI 兼容备 | `sideQuery` 用于便宜模型做相关性筛选 |
+| LLM | **DeepSeek**(`deepseek-v4-pro` 主 / `deepseek-flash` 便宜活) | OpenAI 兼容,Node 原生 `fetch` 直调,**零 SDK 依赖**;见 §12.4 |
 | PDF | `pdfjs-dist` / `unpdf`;arXiv 官方 API 优先 | PDF 只作降级 |
 | 终端 | `chalk` | 不上 Ink/React |
 | **Web 后端** | **Node 内置 `http` + SSE** | 零依赖;事件是单向的,SSE 比 WebSocket 简单一个量级 |
@@ -1179,6 +1195,69 @@ hackathon-agent/
 | 路径含空格 | `credential.helper` 路径被截断 | 凭据写 remote URL;脚本加引号 |
 | 换行符 | 跨平台满屏 diff | `.gitattributes` 已配 |
 | glob 工具 | 在含空格路径下返回空 | 用 `Get-ChildItem` 列目录 |
+
+### 12.4 DeepSeek 接入细则(决策 DEC-028)
+
+**接口**:`POST https://api.deepseek.com/chat/completions`,OpenAI 兼容。
+**不需要任何 SDK** —— Node 24 原生 `fetch` 直调,省一个依赖。
+
+#### 模型分工
+
+| 用途 | 模型 | 理由 |
+|---|---|---|
+| 主 Agent 循环、方案生成 | `deepseek-v4-pro` | 能力优先 |
+| A 知识库相关性筛选、MethodSpec 抽取、技能草案聚合 | `deepseek-flash` | 便宜、快,这些是"选/抽"而非"想" |
+| 演示兜底 | — | 走 `replay`,不调 API |
+
+#### 工具调用协议(与 Anthropic 的差异表)
+
+| 环节 | Anthropic(Claude Code 的做法) | **DeepSeek(我们要写的)** |
+|---|---|---|
+| 声明工具 | `tools: [{name, description, input_schema}]` | `tools: [{type:'function', function:{name, description, parameters(JSON Schema)}}]` |
+| 模型请求工具 | `content[]` 里的 `{type:'tool_use', id, name, input}` | `message.tool_calls[]`,每项 `{id, type:'function', function:{name, arguments}}` |
+| 参数形态 | `input` 是**对象** | `arguments` 是 **JSON 字符串**(必须 parse) |
+| 回填结果 | user 消息内嵌 `{type:'tool_result', tool_use_id}` | **独立消息** `{role:'tool', tool_call_id, content}` |
+| 流式工具调用 | content block 增量 | `delta.tool_calls[]` 按 **`index`** 累积拼装 |
+| 失败标志 | `is_error: true` 字段 | 无此字段,**错误文本写进 `content` 即可** |
+
+#### 流式响应处理要点
+
+```
+data: {"choices":[{"delta":{"content":"Hello"}}]}            → 文本增量,直接推给事件总线
+data: {"choices":[{"delta":{"reasoning_content":"..."}}]}     → 思考链,单独处理或忽略
+data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"...","function":{"name":"x","arguments":"{\"a\""}}]}}]}
+                                                              → 按 index 累积 arguments 片段,
+                                                                 需要自己拼成完整 JSON 字符串
+data: {"choices":[{"finish_reason":"tool_calls", "usage":{...}}]}   → 结束 + 用量
+data: [DONE]                                                  → 流结束标记
+```
+
+- `stream_options: { include_usage: true }` 才能拿到用量(否则中间块无 `usage`)
+- 每个 tool_call 的**第一个 chunk 带 `id`/`type`/`function.name`,"后续 chunk 只携带 function 参数"** → 必须按 index 合并
+
+#### 结构化输出(三个模块都用得上)
+
+| 场景 | 手段 |
+|---|---|
+| MethodSpec 抽取(B) | `response_format: {type:'json_object'}` + prompt 里给出 schema |
+| A 知识库相关性筛选 | 同上,或 `tools` 里定义一个"提交选择结果"的函数用 `strict: true` |
+| 工具参数严格校验 | `tools[].function.strict: true`(Beta,按 JSON Schema 强约束) |
+
+> ⚠️ 用 `json_object` 时,**必须在 prompt 里明确要求输出 JSON**,否则模型可能一直输出空白直到触到 max_tokens(官方明确警告)。
+
+#### 两个坑必须提前规避
+
+| 坑 | 说明 | 应对 |
+|---|---|---|
+| **思考模式默认开启** | `thinking.type` 默认 `enabled`,会返回 `reasoning_content`;且思考模式下**不支持 `tool_choice: 'required'` 和指定具体工具**(会 400) | Agent 循环统一设 `thinking: {type:'disabled'}`;确实要用思考模式时,改用 `tool_choice:'auto'` |
+| **`arguments` 不保证合法 JSON** | 官方原话:「模型并不总是生成有效的 JSON,并且可能会臆造出你函数模式中未定义的参数」 | `JSON.parse` 失败 → 回填错误让模型重试;parse 成功后再过 zod 校验 |
+
+#### 成本参考(粗略量级)
+
+DeepSeek 定价远低于同级别模型,对本项目这种"一次 ingest 处理 5–10 篇论文"的用量,单次运行成本在**分角级**,可以放心把 `MAX_TOTAL_TOKENS` 设得宽松些(如 500k)。具体价格以官方页面为准,不必在文档里写死。
+
+> **API Key 由用户自填**(决策 DEC-028):`.env` 里 `DEEPSEEK_API_KEY` 留空,由每位成员填自己的 key。这也是 `Q2` 的结论。
+
 
 ---
 
