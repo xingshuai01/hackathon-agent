@@ -45,6 +45,10 @@ venv/
 # ---- 本地工具缓存 ----
 .workbuddy
 
+# ---- 第三方参考源码(仅本机阅读,绝不入库)----
+# Claude Code 源码:1900+ 文件 / 29MB,且非本项目所有,提交会污染仓库并带来许可风险
+/claude-code-main/
+
 # ---- 编辑器 / 系统 ----
 .vscode/*
 !.vscode/settings.json.example
