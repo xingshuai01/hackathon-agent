@@ -3,63 +3,115 @@
 > 4 天黑客松项目 · 团队定位:**偏工程**,目标是通过比赛系统学习 Agent 架构开发
 > 仓库私有,比赛结束后再考虑公开。
 
----
+## 我们在做什么
+
+**一个会"长大"的科研 Agent。**
+
+你给它一批同领域论文,它不只是回答问题,而是把论文**沉淀成三类可复用资产**:记住了什么(知识库)、能做什么(工具库)、该怎么判断(技能库)。下次遇到同类任务,它直接用这些资产干活,而不是从头读一遍。
+
+| 模块 | 沉淀什么 | 一句话 | 状态 |
+|---|---|---|---|
+| **A 个人知识库** | 事实与论断,带页码锚点 | 记「**是什么**」 | ⏳ 未开始 |
+| **B 工具库** | 从论文抽出的可执行工具 | 做「**怎么做**」 | ⏳ 未开始 |
+| **C 技能库** | 领域流程、判据、失败模式 | 判「**该做什么**」 | ⏳ 未开始 |
+
+**相对普通 Agent 的差异**:Claude Code 的 40+ 工具全部由人手写,我们的工具**从论文里长出来** —— 这是真增量。
 
 ## 当前状态
 
 | 项 | 状态 |
 |---|---|
-| 仓库 / 分支 / 协作流程 | ✅ 就绪 |
-| 问题跟踪(Milestones + Issues + Labels) | ✅ 就绪 |
-| **选题锁定** | ⏳ 待定(D0 当天锁定) |
-| MVP 骨架 | ⏳ |
-| 端到端 Demo | ⏳ |
+| 选题与产品方向 | ✅ 已锁定(科研 Agent + 三模块) |
+| 交付形态 | ✅ 已定:**Web 可视化界面**(CLI 保留为兜底) |
+| 文档(需求 / 设计 / 决策) | ✅ 就绪 |
+| 仓库 / Issue / 标签 / 里程碑 | ✅ 就绪 |
+| **代码** | ⏳ **0 行 —— 代码尚未开始** |
+
+## ⚠️ 开工前需要确认的 4 件事
+
+> 这几项不确认会阻塞开发,请负责人尽快拍板(期限见右列)。详见 [`docs/DECISIONS.md`](docs/DECISIONS.md) 第二节。
+
+| 编号 | 问题 | 期限 | 未确认时的默认 |
+|---|---|---|---|
+| **Q0** | 三个模块的准确名称是否为「个人知识库 / 工具库 / 技能库」? | **D1 10:00** | 按此命名执行 |
+| **Q1** | `kiwi` 具体指哪个产品?(已降级为不阻塞,架构已用可插拔设计绕开) | D1 12:00 | 自研 `LocalMarkdownStore` |
+| **Q2** | LLM Provider 与额度(用哪家 API?) | **D1 10:00** | 双 provider 可切换 |
+| **Q4** | 团队分工(谁负责哪块?) | D1 12:00 | 按 SDD §13.4 的 3 人分工 |
 
 ## 文档索引
 
+**先读这三份,顺序不要颠倒:**
+
+| 文档 | 回答什么 | 篇幅 |
+|---|---|---|
+| **[`docs/DECISIONS.md`](docs/DECISIONS.md)** | **为什么是这样**(27 条决策 + 备选方案 + 演进记录) | 短,先扫一遍 |
+| **[`docs/SRS.md`](docs/SRS.md)** | **做什么**(功能需求 FR-A~F + 验收标准 + 里程碑) | 长,查用 |
+| **[`docs/SDD.md`](docs/SDD.md)** | **怎么做**(架构 / 契约 / 数据模型 / 主循环 / 三模块 / Web 薄壳 / 开发计划) | 长,查用 |
+
+其余:
+
 | 文档 | 内容 |
 |---|---|
-| **[`docs/SRS.md`](docs/SRS.md)** | **需求说明书(唯一功能基线)** —— 功能需求、验收标准、里程碑、风险 |
-| **[`docs/SDD.md`](docs/SDD.md)** | **设计开发文档** —— 基于 Claude Code 真实源码的架构映射、核心契约、主循环、三模块详细设计、开发计划 |
-| [`docs/PLAN.md`](docs/PLAN.md) | 四天里程碑、任务拆解、验收标准、风险 |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | 分支 / commit / PR / 任务认领规范(4 天轻量版) |
-| [`docs/reference/claude-code-architecture.md`](docs/reference/claude-code-architecture.md) | 原始选题与技术框架参考资料(Claude Code 架构分析) |
+| [`docs/PLAN.md`](docs/PLAN.md) | 早期四天计划(部分内容已被 SRS/SDD 取代) |
+| [`docs/wyh/`](docs/wyh/) | 队友方案:仓库分析建议 / 代码开发规范 / 需求可行性分析 |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | 分支 / commit / PR / 任务认领规范 |
+| [`docs/reference/claude-code-architecture.md`](docs/reference/claude-code-architecture.md) | Claude Code 架构分析(原始参考资料) |
 | `.env.example` | 环境变量清单,复制为 `.env` 后填写 |
 
-## 四天日程(概览)
+## 四天日程
 
-| 日期 | 目标 | 当日交付物 |
+| 日期 | 主线 | 完成判据 |
 |---|---|---|
-| **D1** | 选题锁定 + 骨架跑通 | 项目脚手架、工具接口抽象、LLM 主循环能跑通一轮 tool_use |
-| **D2** | 核心能力 | 2-3 个真实工具 + 子 Agent 机制 + 最小记忆 |
-| **D3** | 端到端打通 | 完整 pipeline / 工作流、可复现 demo 脚本 |
-| **D4** | 打磨与交付 | Demo 脚本、README/幻灯片、录屏、公开仓库清理 |
+| **D1** | 契约 + 底座 + 主循环 + 事件总线 | 主循环跑通一轮;1 篇论文能出 `PaperDoc` |
+| **D2** | A 知识库闭环 + B 首个工具 + Web 骨架 | 产出 ≥5 条知识页可检索;≥1 个工具 active;浏览器能看到流式输出 |
+| **D3** | C 技能库 + 三层贯通 + 三个可视化面板 | 一条命令跑通「沉淀 → 消费」;三面板实时显示资产增长 |
+| **D4** | 打磨与交付 | 三模块各自可独立演示;Web 崩了能秒切 CLI |
 
-> 详细拆解见 [`docs/PLAN.md`](docs/PLAN.md);每天的任务以 GitHub Issue 为准。
+**四个硬检查点**(过不了就按 SRS §3.3 的裁剪顺序降级):
+
+| 时点 | 检查 |
+|---|---|
+| D1 10:00 | 每人用自己的 key 调通一次 LLM API |
+| D1 12:00 | Q0/Q1/Q2/Q4 关闭 + 三个冻结契约合入 main |
+| D2 17:00 | A 知识库闭环跑通 |
+| D3 17:00 | 一条命令跑通完整链路 |
 
 ## 工作方式
 
 - **所有任务先进 Issue**,有 Issue 才有分支,PR 标题带 `Closes #<issue号>`
 - `main` 保持随时可跑;每人用自己的 `feat/*` 分支,当天至少 push 一次
 - 看板按 `status:` 标签过滤(见 [`CONTRIBUTING.md`](CONTRIBUTING.md))
+- **三个冻结契约**(`tools/types.ts`、`agent/types.ts`、`knowledge/types.ts`、`ui/events.ts`)改动需 PR + 1 人 approve
 
 ## 本地环境
 
-已确认可用:Node `v24.15.0`、git `2.54.0`、GitHub CLI `2.103.2`。
-具体运行时依赖待选题锁定后在 `docs/PLAN.md` 补齐。
+| 项 | 状态 |
+|---|---|
+| Node | `v24.15.0`(支持直接跑 `.ts`,免构建) |
+| git | `2.54.0` |
+| GitHub CLI | `2.103.2`(位于 `.tools/bin/gh.exe`,已 gitignore) |
+| 代理 | 需配 `http://127.0.0.1:7892` —— **命令行工具不读 Windows 系统代理** |
+
+> ⚠️ 项目路径含空格(`hacthon pro`),所有脚本路径必须加引号。
+> 详细环境约束见 [`docs/SDD.md`](docs/SDD.md) §12.3。
 
 ## 目录结构
 
 ```
 .
 ├── docs/
-│   ├── PLAN.md                        # 四天计划与里程碑
-│   ├── wyh/                           # 队友的方案文档(待评审)
+│   ├── DECISIONS.md                   # 决策台账
+│   ├── SRS.md                         # 需求说明书
+│   ├── SDD.md                         # 设计开发文档
+│   ├── PLAN.md                        # 早期四天计划
+│   ├── wyh/                           # 队友方案文档
 │   └── reference/
-│       └── claude-code-architecture.md  # 技术框架参考资料
+│       └── claude-code-architecture.md
 ├── .github/                           # Issue / PR 模板
 ├── .env.example                       # 环境变量清单
-└── fixtures/                          # demo 固定样例(入库,保证可复现)
+├── data/                              # 原始论文与大文件(仅 README 入库)
+├── fixtures/                          # demo 回放数据(必须入库)
+└── claude-code-main/                  # ⛔ 第三方参考源码,已 gitignore,绝不入库
 ```
 
-> 代码目录待 D1 骨架落地后补充。
+> 代码目录(`src/`、`web/`)待 D1 落地后补充,详见 [`docs/SDD.md`](docs/SDD.md) §11。
