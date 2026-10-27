@@ -31,12 +31,19 @@ venv/
 *.egg-info/
 
 # ---- 数据 / 产物(体积大或可重建)----
-data/
-artifacts/
-logs/
+# 只在仓库根目录忽略,避免误伤 src/data/、tools/data/ 这类源码目录
+/data/*
+# fixtures 是 demo 固定样例,必须入库才可复现(见 docs/PLAN.md D3)
+!/data/fixtures/
+!/data/README.md
+/artifacts/
+/logs/
 *.log
 *.sqlite
 *.db
+
+# ---- 本地工具缓存 ----
+.workbuddy
 
 # ---- 编辑器 / 系统 ----
 .vscode/*

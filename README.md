@@ -21,7 +21,8 @@
 |---|---|
 | [`docs/PLAN.md`](docs/PLAN.md) | 四天里程碑、任务拆解、验收标准、风险 |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | 分支 / commit / PR / 任务认领规范(4 天轻量版) |
-| `黑客松选题与Claude_Code技术框架(1).md` | 原始选题与技术框架参考资料 |
+| [`docs/reference/claude-code-architecture.md`](docs/reference/claude-code-architecture.md) | 原始选题与技术框架参考资料(Claude Code 架构分析) |
+| `.env.example` | 环境变量清单,复制为 `.env` 后填写 |
 
 ## 四天日程(概览)
 
@@ -49,9 +50,14 @@
 
 ```
 .
-├── docs/                 # 计划与设计文档
-├── .github/              # Issue / PR 模板
-└── 黑客松选题与Claude_Code技术框架(1).md   # 参考资料
+├── docs/
+│   ├── PLAN.md                        # 四天计划与里程碑
+│   ├── wyh/                           # 队友的方案文档(待评审)
+│   └── reference/
+│       └── claude-code-architecture.md  # 技术框架参考资料
+├── .github/                           # Issue / PR 模板
+├── .env.example                       # 环境变量清单
+└── fixtures/                          # demo 固定样例(入库,保证可复现)
 ```
 
 > 代码目录待 D1 骨架落地后补充。
