@@ -13,8 +13,8 @@
  * 临时豁免:在违规行末尾加 `// rule-ignore <规则名>`(需在 CODE-REVIEW 里说明理由)。
  */
 
-import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
-import { join, relative, extname } from 'node:path'
+import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { join, relative, extname, dirname, normalize } from 'node:path'
 
 const ROOT = process.cwd()
 
@@ -46,23 +46,50 @@ const BANNED_PACKAGES = [
 ]
 
 /**
- * 模块边界:每个目录**只能** import 这些前缀。
- * 依据 docs/SDD.md §3.2 的 R1–R5。
+ * 模块边界。路径统一解析成「仓库相对路径」后再比较,
+ * 这样 `../skills/store.ts` 和 `src/services/skills/store.ts` 都能识别。
+ * 依据 docs/SDD.md §3.2、docs/STRUCTURE.md §4。
  */
-const IMPORT_WHITELISTS = [
+const IMPORT_BOUNDARIES = [
   {
     dir: 'web',
-    allow: ['node:', '../src/ui/events.ts', './'],
-    why: '薄壳约束(NFR-12):Web 层不得 import 任何业务实现,只消费事件流',
+    allowResolvedPrefix: ['src/ui/events', 'web/'],
+    allowSpec: ['node:'],
+    why: '薄壳约束(NFR-12):Web 层不得 import 任何业务实现,只消费事件流。需要数据就订阅事件或读文件系统',
   },
   {
     dir: 'src/tools',
-    // 工具层不得直接依赖 LLM(编排层通过 ToolContext 注入能力)
-    allow: ['node:', 'zod', '../', './'],
-    deny: ['services/llm'],
-    why: 'R2:工具层不 import LLM',
+    allowResolvedPrefix: ['src/tools/', 'src/ui/', 'src/agent/types'],
+    allowSpec: ['node:', 'zod'],
+    why: 'R2:工具层不 import LLM,也不 import 具体业务模块(能力通过 ToolContext 注入)',
   },
 ]
+
+/**
+ * 三个模块之间不得互相 import 实现(R3)。
+ *
+ * 这是「三人各开发一个模块」能否并行的关键:
+ * 一旦 knowledge 直接 import skills 的实现,两人的改动就会互相锁死。
+ * 正确做法:需要别人的数据就做成函数参数,类型用契约里已有的。
+ */
+const MODULE_ISOLATION = [
+  {
+    dir: 'src/services/knowledge',
+    forbid: ['src/services/skills/', 'src/services/toolsynth/'],
+    owner: '同学1(模块 A)',
+  },
+  {
+    dir: 'src/services/toolsynth',
+    forbid: ['src/services/knowledge/', 'src/services/skills/'],
+    owner: '同学2(模块 B)',
+  },
+  {
+    dir: 'src/services/skills',
+    forbid: ['src/services/knowledge/', 'src/services/toolsynth/'],
+    owner: '同学3(模块 C)',
+  },
+]
+
 
 /** 冻结契约文件:必须存在,且必须带 ★ 标记 */
 const CONTRACT_FILES = [
@@ -236,13 +263,20 @@ function checkSourceFile(file) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 规则 3:模块边界(import 白名单)
+// 规则 3:模块边界(import 白名单)+ 跨模块隔离
 // ─────────────────────────────────────────────────────────────
+
+/** 把相对 specifier 解析成仓库相对路径;裸包名返回 null */
+function resolveSpecifier(fileRelPath, spec) {
+  if (!spec.startsWith('.')) return null
+  return normalize(join(dirname(fileRelPath), spec)).replace(/\\/g, '/')
+}
 
 function checkImportBoundaries(file) {
   const relPath = rel(file)
-  const rule = IMPORT_WHITELISTS.find((r) => relPath === r.dir || relPath.startsWith(r.dir + '/'))
-  if (!rule) return
+  const boundary = IMPORT_BOUNDARIES.find((r) => relPath.startsWith(r.dir + '/'))
+  const isolation = MODULE_ISOLATION.find((r) => relPath.startsWith(r.dir + '/'))
+  if (!boundary && !isolation) return
 
   const lines = readLines(file)
   lines.forEach((line, i) => {
@@ -251,20 +285,36 @@ function checkImportBoundaries(file) {
     while ((m = RE_IMPORT.exec(line)) !== null) {
       const spec = m[1]
 
-      // deny 优先
-      if (rule.deny?.some((d) => spec.includes(d))) {
-        report(
-          'import-boundary',
-          relPath,
-          i + 1,
-          `不允许 import:${spec}`,
-          rule.why,
-        )
+      // ── 裸包名 / node: 前缀 ──
+      if (!spec.startsWith('.')) {
+        if (boundary && !boundary.allowSpec.some((a) => spec.startsWith(a))) {
+          report('import-boundary', relPath, i + 1, `越界 import:${spec}`, boundary.why)
+        }
         continue
       }
-      if (rule.allow.some((a) => spec.startsWith(a) || spec === a)) continue
 
-      report('import-boundary', relPath, i + 1, `越界 import:${spec}`, rule.why)
+      // ── 相对路径:先解析成仓库相对路径 ──
+      const resolved = resolveSpecifier(relPath, spec)
+      if (!resolved) continue
+
+      if (boundary && !boundary.allowResolvedPrefix.some((p) => resolved.startsWith(p))) {
+        report('import-boundary', relPath, i + 1, `越界 import:${spec} → ${resolved}`, boundary.why)
+        continue
+      }
+
+      if (isolation) {
+        const hit = isolation.forbid.find((f) => resolved.startsWith(f))
+        if (hit) {
+          report(
+            'module-isolation',
+            relPath,
+            i + 1,
+            `跨模块 import:${spec} → ${resolved}`,
+            `${isolation.owner} 的模块不得依赖别人模块的实现(R3)。` +
+              `需要对方的数据,就把它做成函数参数传进来,类型用契约里已有的。`,
+          )
+        }
+      }
     }
   })
 }
@@ -339,7 +389,7 @@ function main() {
 
   // ── 输出 ──
   if (violations.length === 0) {
-    console.log(`✅ 规则检查通过(${files.length} 个文件,5 组规则)`)
+    console.log(`✅ 规则检查通过(${files.length} 个文件,6 组规则)`)
     process.exit(0)
   }
 

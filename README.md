@@ -50,6 +50,7 @@
 | 文档 | 回答什么 | 篇幅 |
 |---|---|---|
 | **[`docs/DECISIONS.md`](docs/DECISIONS.md)** | **为什么是这样**(31 条决策 + 备选方案 + 演进记录) | 短,先扫一遍 |
+| **[`docs/STRUCTURE.md`](docs/STRUCTURE.md)** | **谁改哪些文件 + 谁等谁**(目录树 / 所有权表 / import 边界 / 并行顺序) | 中,接手任务前必读 |
 | **[`docs/SRS.md`](docs/SRS.md)** | **做什么**(功能需求 FR-A~F + 验收标准 + 里程碑) | 长,查用 |
 | **[`docs/SDD.md`](docs/SDD.md)** | **怎么做**(架构 / 契约 / 数据模型 / 主循环 / 三模块 / Web 薄壳 / 开发计划) | 长,查用 |
 

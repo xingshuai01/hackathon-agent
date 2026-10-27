@@ -234,6 +234,12 @@ npm run verify
 
 **三个模块之间**(knowledge / skills / toolsynth)**只能通过契约交互**,不得互相 import 实现(R3)。
 
+> 这条由检查器的 `module-isolation` 规则机械执行。**这是「三人各开发一个模块」能否并行的关键** ——
+> 一旦 A 直接 import C 的实现,两人的改动就互相锁死了。
+>
+> **正确做法**:需要别人的数据,就把它做成函数参数传进来,类型用契约里已有的(`AtomicNote` / `Tool` / `Skill`)。
+> 详细的目录 → 负责人映射见 [`STRUCTURE.md`](./STRUCTURE.md) §3。
+
 ---
 
 ## 4. 类型与语法约束
@@ -381,6 +387,7 @@ const r: ToolResult = hint ? { ok:false, error:'x', hint } : { ok:false, error:'
 | `no-namespace` | ❌ 失败 | 是否使用 `namespace` | 铁律 4 |
 | `no-todo-throw` | ❌ 失败 | 是否用 throw 表示未实现 | 铁律 9 |
 | `import-boundary` | ❌ 失败 | 是否越界 import | 铁律 7、§3 |
+| `module-isolation` | ❌ 失败 | 三个模块之间是否互相 import 实现 | 铁律 1、§3 |
 | `contract-missing` | ❌ 失败 | 契约文件是否存在 | 铁律 1 |
 | `contract-marker` | ❌ 失败 | 契约文件是否带 ★ 标记 | 铁律 1 |
 | `anchor-placeholder` | ❌ 失败 | 是否用 `page: 0` 占位 | 铁律 5 |
