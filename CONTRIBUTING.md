@@ -2,6 +2,16 @@
 
 > 原则:**流程服务于速度**。以下规则只为降低「撞车」和「找不到东西」的成本,不做任何额外仪式。
 
+> ## ⚠️ 写代码前必读两份
+>
+> | 文件 | 管什么 |
+> |---|---|
+> | [`AGENTS.md`](AGENTS.md) | **六条硬约束**(冻结契约 / 依赖 / any / 消息格式 / 不 throw / web 薄壳) |
+> | [`docs/CODE-RULES.md`](docs/CODE-RULES.md) | 完整规则、模块边界、错误处理、AI Agent 作业协议 |
+>
+> **提交前必须跑 `npm run verify`**(typecheck + 规则检查 + 测试),把输出贴进 PR。
+> 规则检查器(`scripts/check-rules.mjs`)会拦下:新增依赖、`any`、`enum`、越界 import、改契约签名、`page: 0` 占位等。
+
 ## 1. 任务认领
 
 - 所有任务先建 **Issue**(用 `任务` 模板),写清验收标准。
@@ -35,11 +45,13 @@ scope: 可选,模块名
 
 ## 4. PR
 
-- 小而频,一个 PR 只做一件事。**超过 400 行 diff 考虑拆分。**
+- 小而频,一个 PR 只做一件事。**超过 400 行 diff 或 5 个文件考虑拆分。**
 - 标题:`<type>(<scope>): <描述> (#issue号)`
 - 描述里写 `Closes #<issue号>`,并勾选自测项。
+- **必须贴 `npm run verify` 的实际输出**(typecheck + check:rules + test 三项全绿)。
 - 至少 **1 人 approve** 再合;作者本人不能自己 approve。
 - 合并方式:优先 **Squash merge**,保持 main 历史干净。
+- **改动了「★★★ 冻结契约」文件的签名 → 一律打回**,先恢复再讨论。
 
 ## 5. 每天收工前 5 分钟
 

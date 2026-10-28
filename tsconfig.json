@@ -1,0 +1,33 @@
+{
+  // 只做类型检查,不产出 JS —— 运行时由 Node 24 直接执行 .ts(类型剥离)
+  // 因此这里刻意开启了几项「限制语法」的选项,把不规范写法挡在类型检查阶段
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+
+    // ★ 关键:禁止 enum / namespace / 构造函数参数属性
+    // 这些语法在 Node 的类型剥离模式下无法运行,开启此项后 tsc 会直接报错
+    "erasableSyntaxOnly": true,
+
+    // 只做检查,不产出
+    "noEmit": true,
+    // Node 类型剥离要求 import 路径带 .ts 扩展名
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "web/**/*.ts", "test/**/*.ts"],
+  "exclude": ["node_modules", "claude-code-main"]
+}
