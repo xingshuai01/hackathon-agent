@@ -46,27 +46,33 @@
 hackathon-agent/
 │
 ├── src/
-│   ├── main.ts                              [骨架] CLI 入口:ingest / ask / tools doctor / web
+│   ├── main.ts                              ✅ CLI 入口:ask / tools doctor / ingest / web
 │   │
 │   ├── ui/                                  [骨架] 渲染层(只消费事件,不含业务)
 │   │   ├── events.ts                        ★ 9 种事件 + EventBus
-│   │   ├── renderCli.ts                     CLI 渲染器(chalk)
-│   │   └── renderProgress.ts                进度输出
+│   │   ├── renderCli.ts                     ✅ CLI 渲染器(ANSI 上色,零依赖)
+│   │   └── renderProgress.ts                进度输出                                  [待写]
 │   │
 │   ├── agent/                               [骨架] 编排层(全项目心脏)
 │   │   ├── types.ts                         ★ Message / LoopEndReason / partitionToolCalls
-│   │   ├── loop.ts                          主循环(目标 150–250 行)
-│   │   ├── subagent.ts                      子 Agent 派生(独立上下文 + 工具白名单)
-│   │   ├── registry.ts                      工具注册表(含 B 模块生成的工具)
-│   │   ├── prompt.ts                        system prompt 组装(注入知识索引 + 技能清单)
-│   │   └── budget.ts                        token 预算与分段压缩
+│   │   ├── loop.ts                          ✅ 主循环(约 230 行,含四条红线)
+│   │   ├── subagent.ts                      子 Agent 派生(独立上下文 + 工具白名单)  [待写 #22]
+│   │   ├── registry.ts                      ✅ 工具注册表(含 B 模块生成的工具)
+│   │   ├── prompt.ts                        ✅ system prompt 组装(注入知识索引 + 技能清单)
+│   │   ├── fakeLlm.ts                       ✅ 剧本化假 LLM(--fake 演示与单测)
+│   │   └── budget.ts                        token 预算与分段压缩                      [待写]
 │   │
 │   ├── tools/                               [骨架] 工具层
 │   │   ├── types.ts                         ★ Tool / fail-closed 能力位 / 三段式管线
+│   │   ├── infra.ts                         ✅ echo / now / calc(演示与自检)
+│   │   ├── sciencepal.ts                    ✅ SciencePal 工具节点(DEC-032)
 │   │   └── generated/                       [B] B 模块产出的工具落这里(见该目录 README)
 │   │
+│   ├── config/
+│   │   └── env.ts                           ✅ 极简 .env 加载器(零依赖,不引入 dotenv)
+│   │
 │   └── services/
-│       ├── llm/                             [骨架] DeepSeek 客户端
+│       ├── llm/                             [骨架] DeepSeek 客户端 ✅(types/stream/retry/deepseek)
 │       │   ├── deepseek.ts                  原生 fetch 直连(零 SDK)
 │       │   ├── stream.ts                    SSE 解析 + tool_calls 按 index 拼装
 │       │   ├── retry.ts                     指数退避 + retry-after

@@ -517,6 +517,52 @@ Q1 的结论是:**`kiwi` 不是某个具体产品,而是「个人知识库所用
 
 ---
 
+### FR-G SciencePal 集成 · P0(决策 DEC-032)
+
+**描述**:把 SciencePal 的科研智能体封装成主循环里的**一个工具节点** `sciencepal_query`。
+**这不是"用 SciencePal 当开发工具"**,而是让我们的 Agent 在需要深度文献综述时**调用它**。
+
+> 为什么必须有:`比赛规则要求「至少一个核心环节须实质性使用 SciencePal」,
+> 且提交清单②要求「可访问的 SciencePal 项目、Agent 或工作流链接」。
+
+#### FR-G1 调用能力 · P0
+
+| 验收标准 | |
+|---|---|
+| AC-G1.1 | 工具名 `sciencepal_query`,符合 `Tool` 接口,`isReadOnly: false`、`isConcurrencySafe: false`(fail-closed) |
+| AC-G1.2 | 封装 `POST /agent/initiate` + `GET /agent-run/{id}/stream` + `GET /agent-run/{id}` 三步 |
+| AC-G1.3 | 事件流里 `content` 是 **JSON 字符串**,必须二次解析才能取正文 |
+| AC-G1.4 | 流断开不等于完成:必须再查一次最终 `status` |
+| AC-G1.5 | 支持 `agentId` 参数覆盖默认 Agent;默认 Survey Agent(学术综述) |
+| AC-G1.6 | 失败返回 `toolFail` + 可操作提示(检查 key / 换 agent / 重试),不抛 |
+
+#### FR-G2 与回放模式的配合 · P0
+
+| 验收标准 | |
+|---|---|
+| AC-G2.1 | `DEMO_MODE=replay` 时**只读 fixtures,零网络请求** |
+| AC-G2.2 | `--record` 能把 SciencePal 响应录进 `fixtures/` |
+| AC-G2.3 | replay 下取不到 fixture 时报明确错误(含期望文件路径与录制方法),不静默联网 |
+
+#### FR-G3 配置与降级 · P0
+
+| 验收标准 | |
+|---|---|
+| AC-G3.1 | `SCIENCEPAL_API_KEY` 未配置时**不注册该工具**,其余功能照常可用 |
+| AC-G3.2 | 启动时在终端提示「已注册 / 未注册 sciencepal_query」 |
+| AC-G3.3 | initiate 可能很慢(实测约 28s),超时必须足够(`SCIENCEPAL_INITIATE_TIMEOUT_MS`) |
+| AC-G3.4 | 工具层**不得 import `services/`**(R2),缓存能力通过 `ctx.cache` 注入 |
+
+#### FR-G4 提交材料 · P0
+
+| 验收标准 | |
+|---|---|
+| AC-G4.1 | 在 SciencePal 平台创建 1 个自定义 Agent(科研三模块工作流),作为提交的「项目链接」 |
+| AC-G4.2 | 该 Agent 的 system prompt 与本项目三模块设计一致 |
+| AC-G4.3 | 演示时能展示「我们的 Agent 调用 SciencePal」的完整链路 |
+
+---
+
 ### 需求依赖图
 
 ```

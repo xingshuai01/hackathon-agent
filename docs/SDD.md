@@ -1258,6 +1258,69 @@ DeepSeek 定价远低于同级别模型,对本项目这种"一次 ingest 处理 
 
 > **API Key 由用户自填**(决策 DEC-028):`.env` 里 `DEEPSEEK_API_KEY` 留空,由每位成员填自己的 key。这也是 `Q2` 的结论。
 
+### 12.5 SciencePal 集成(决策 DEC-032)
+
+#### 12.5.1 定位:工具节点,不是开发工具
+
+```
+我们的主循环(loop.ts)
+    │
+    ├─ knowledge_search     (A 模块,同学1)
+    ├─ 生成的工具            (B 模块,同学2)
+    └─ sciencepal_query  ◀── 这里!封装 SciencePal Agent API
+            │
+            ▼
+      POST /agent/initiate ──▶ GET /agent-run/{id}/stream ──▶ GET /agent-run/{id}
+```
+
+**这样做的意义**:比赛要求「核心环节实质性使用 SciencePal」。SciencePal 出现在
+**工具调用链**里,是"核心环节"最硬的证据;而我们的架构一行都不用改。
+
+#### 12.5.2 三个容易踩的坑(实测)
+
+| 坑 | 现象 | 处理 |
+|---|---|---|
+| **`content` 是 JSON 字符串** | 直接当对象用会拿到 `undefined` | `JSON.parse` 二次解析,取 `.content` |
+| **initiate 很慢** | 实测约 **28 秒**才返回 | 超时给到 120s,且不要放在循环的同步路径上 |
+| **流断开 ≠ 完成** | 收到 `[DONE]` 但 `status` 仍是 `running` | 流结束后**必须**再查 `GET /agent-run/{id}` |
+
+#### 12.5.3 事件结构
+
+```
+status        content 里含 status_type:model_resolved / thread_run_start /
+              assistant_response_start / run_progress / finishing / finish / thread_run_end
+assistant     content 是 {"role":"assistant","content":"..."} —— 正文在这里
+assistant_response_end  含 model + usage + choices
+ping          保活,忽略
+```
+
+#### 12.5.4 内置 Agent 与模型(实测)
+
+| Agent | agent_id | 用途 |
+|---|---|---|
+| General | `…0001` | 通用科学工程 |
+| Biology | `…0002` | 计算生物学 |
+| Material | `…0003` | 材料科学 |
+| **Survey** | `…0007` | **学术综述(默认选它)** |
+| MIMIC | `…000a` | 临床研究 |
+
+模型:`deepseek-v4-pro` / `deepseek-v4-flash` / `glm-5.3` / `glm-5.3-flash` / `kimi-k3`
+
+#### 12.5.5 成本注意
+
+实测:一个"说三行话"的琐碎任务 `prompt_tokens = 31164` —— **平台 system prompt 很重**。
+所以 `sciencepal_query` 必须:
+
+- `isConcurrencySafe: () => false`(不要并发烧额度)
+- 只在真正需要深度综述时调用,简单的检索用 A 模块自己的 `knowledge_search`
+- `maxResultSizeChars: 12000`(避免把长回答整个塞回主上下文)
+
+#### 12.5.6 实现位置
+
+`src/tools/sciencepal.ts` —— **属于工具层,所以不得 import `services/`**(R2)。
+缓存能力通过 `ctx.cache` 注入;那条"fixture 缺失"的提示文案在本文件内自带。
+
+
 
 ---
 
