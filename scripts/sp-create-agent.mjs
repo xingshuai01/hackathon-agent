@@ -47,7 +47,7 @@ function mask(secret) {
 
 async function main() {
   loadEnv()
-  const BASE = (process.env.SCIENCEPAL_BASE_URL || BASE_DEFAULT).replace(/\/+$/, '')
+  const BASE = (process.env.SCIENCEPAL_BASE_URL || BASE_DEFAULT).replace(/\/+$/, '').replace(/\/api$/, '')
   const KEY = process.env.SCIENCEPAL_API_KEY || ''
   const file = String(arg('file', 'agents/research-distiller.json'))
   const publish = Boolean(arg('publish', false))

@@ -94,7 +94,7 @@ function pickList(body, key) {
 
 async function main() {
   loadEnv()
-  BASE = (process.env.SCIENCEPAL_BASE_URL || BASE_DEFAULT).replace(/\/+$/, '')
+  BASE = (process.env.SCIENCEPAL_BASE_URL || BASE_DEFAULT).replace(/\/+$/, '').replace(/\/api$/, '')
   KEY = process.env.SCIENCEPAL_API_KEY || ''
 
   if (!KEY) {

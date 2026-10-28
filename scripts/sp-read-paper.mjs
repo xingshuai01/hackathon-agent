@@ -111,7 +111,7 @@ function detectAnchors(text) {
 
 async function main() {
   loadEnv()
-  const BASE = (process.env.SCIENCEPAL_BASE_URL || BASE_DEFAULT).replace(/\/+$/, '')
+  const BASE = (process.env.SCIENCEPAL_BASE_URL || BASE_DEFAULT).replace(/\/+$/, '').replace(/\/api$/, '')
   const KEY = process.env.SCIENCEPAL_API_KEY || ''
   const AGENT_ID = arg('agent', process.env.SCIENCEPAL_AGENT_ID || '')
   const MODEL = arg('model', process.env.SCIENCEPAL_MODEL_ID || 'platform::deepseek-v4-pro')

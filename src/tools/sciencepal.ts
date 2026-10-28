@@ -46,6 +46,14 @@ export interface SciencePalConfig {
   readonly initiateTimeoutMs: number
   /** 整个运行的最长等待 */
   readonly runTimeoutMs: number
+  /**
+   * 单次 run 的 token 上限。**必须显式传,不能留空。**
+   *
+   * 实测:平台的固定开销(prompt_tokens)就有 2.4–3.1 万,与我们的 prompt 长度
+   * 关系不大。留空等于不设上限;设得太小(如 8000)会在第一步就
+   * `token_budget_exhausted`,run 变成 `asked` 而不是 failed —— 容易被误判成成功。
+   */
+  readonly tokenBudget: number
 }
 
 /** SciencePal 内置 Agent 的固定 ID(来自 GET /agent-catalog 实测) */
@@ -62,6 +70,12 @@ export const SCIENCEPAL_DEFAULTS = {
   agentId: SCIENCEPAL_BUILTIN_AGENTS.survey,
   initiateTimeoutMs: 120_000,
   runTimeoutMs: 600_000,
+  /**
+   * 60 万。`token_budget` 是**上限**,不是预扣,实际按用量结算,
+   * 所以设宽比设紧安全:设小了会提前 `asked`,设大了不会多花钱。
+   * 依据:实测一篇 33 页论文精读消耗 42.2 万,留约 40% 余量。
+   */
+  tokenBudget: 600_000,
 } as const
 
 /** 从环境变量构造配置。缺 key 时返回 null(工具不注册,而不是让进程崩) */
@@ -76,6 +90,7 @@ export function sciencePalConfigFromEnv(env: NodeJS.ProcessEnv = process.env): S
     ...(model !== undefined && model !== '' ? { model } : {}),
     initiateTimeoutMs: Number(env.SCIENCEPAL_INITIATE_TIMEOUT_MS ?? SCIENCEPAL_DEFAULTS.initiateTimeoutMs),
     runTimeoutMs: Number(env.SCIENCEPAL_RUN_TIMEOUT_MS ?? SCIENCEPAL_DEFAULTS.runTimeoutMs),
+    tokenBudget: Number(env.SCIENCEPAL_TOKEN_BUDGET ?? SCIENCEPAL_DEFAULTS.tokenBudget),
   }
 }
 
@@ -105,6 +120,8 @@ export interface SciencePalResult {
 interface SciencePalEvent {
   type?: string
   content?: string | null
+  /** JSON 字符串。`assistant` 事件里带 `stream_status: chunk | complete` */
+  metadata?: string | null
   message_id?: string
   thread_id?: string
 }
@@ -115,6 +132,23 @@ function extractAssistantText(raw: string | null | undefined): string {
   try {
     const parsed = JSON.parse(raw) as { content?: unknown; role?: unknown }
     return typeof parsed.content === 'string' ? parsed.content : ''
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * 取 `metadata.stream_status`。
+ *
+ * **只有 `complete` 态是最终文本。** `chunk` 是流式增量片段,
+ * 把它当成答案会拿到半截句子 —— 这是 A 模块消费本工具输出时最危险的失真来源。
+ * 返回 '' 表示这个事件没有 metadata(旧版行为),按兼容处理。
+ */
+function extractStreamStatus(raw: string | null | undefined): string {
+  if (typeof raw !== 'string' || raw === '') return ''
+  try {
+    const parsed = JSON.parse(raw) as { stream_status?: unknown }
+    return typeof parsed.stream_status === 'string' ? parsed.stream_status : ''
   } catch {
     return ''
   }
@@ -143,11 +177,13 @@ export function createSciencePalTool(config: SciencePalConfig): Tool<SciencePalI
     const agentId = input.agentId ?? config.agentId
 
     // ── 1. initiate ──
+    // `token_budget` 必须显式传:留空等于不设上限,设太小会让 run 变 `asked`。
     const form = new URLSearchParams({
       agent_id: agentId,
       prompt: input.prompt,
       stream: 'true',
       agent_select_type: 'manual',
+      token_budget: String(config.tokenBudget),
     })
     if (config.model !== undefined) form.set('model_name', config.model)
 
@@ -216,10 +252,13 @@ export function createSciencePalTool(config: SciencePalConfig): Tool<SciencePalI
 
           if (event.type === 'assistant') {
             const text = extractAssistantText(event.content)
-            // ★ 只保留「最后一条非空 assistant 文本」,不要累加。
-            //   累加会把中间态与最终态拼在一起变成乱码。
-            //   这与我们对子 Agent 的约定一致:DEC-017「只回传最后一条 assistant 的 text」。
-            if (text !== '') {
+            const streamStatus = extractStreamStatus(event.metadata)
+            // ★ 只采纳「最终态」的 assistant 文本,不累加。
+            //   - metadata 缺失(旧版/未知):按兼容处理,取最后一条非空
+            //   - stream_status === 'complete':这是最终全文,采纳
+            //   - stream_status === 'chunk':增量片段,丢弃(采纳它会得到半截句子)
+            //   这与 DEC-017「只回传最后一条 assistant 的 text」一致。
+            if (text !== '' && streamStatus !== 'chunk') {
               lastAssistantText = text
               assistantTextCount += 1
             }
@@ -271,6 +310,19 @@ export function createSciencePalTool(config: SciencePalConfig): Tool<SciencePalI
     }
 
     const answer = lastAssistantText.trim()
+
+    // ★ `asked` 不是失败,而是「暂停等用户回答」。实测:token_budget 耗尽即此状态。
+    //   它**一定**带着半截答案,若当成功返回,下游会把半截论断当完整清单 —— 正是
+    //   「跑通了但结果错」的静默错误。所以这里必须显式失败,让主循环能看到并重试。
+    if (status === 'asked') {
+      const partial = answer === '' ? '' : `(已收到 ${String(answer.length)} 字但未完成)`
+      throw new Error(
+        `SciencePal 运行被暂停,未完成(status=asked)${partial}` +
+          `${error !== null ? `;原因:${error}` : ''}。` +
+          `多半是 token_budget(当前 ${String(config.tokenBudget)})不足,提高 SCIENCEPAL_TOKEN_BUDGET 后重试`,
+      )
+    }
+
     if (answer === '' && error !== null) {
       throw new Error(`SciencePal 运行失败(${status}):${error}`)
     }

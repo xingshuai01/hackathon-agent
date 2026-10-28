@@ -18,6 +18,15 @@ export interface PromptParts {
   readonly skillManifest?: string
   /** 额外约束(运行模式、当前日期等) */
   readonly notes?: readonly string[]
+  /**
+   * 当前**实际注册**的工具名。
+   *
+   * 用途:避免提示词让模型去调用一个不存在的工具。
+   * 反例(已修复):曾经无条件写「用 knowledge_search 检索正文」,
+   * 但那个工具没注册,模型照做就会吃一个「未知工具」。
+   * 不传 = 不知道注册了哪些工具,此时只描述能力、不点名工具。
+   */
+  readonly availableTools?: readonly string[]
 }
 
 /** 索引与清单各自的注入预算 */
@@ -41,10 +50,14 @@ export function buildSystemPrompt(parts: PromptParts): string {
   const blocks: string[] = [parts.role.trim()]
 
   if (parts.knowledgeIndex !== undefined && parts.knowledgeIndex.trim() !== '') {
+    // 只有真的注册了 knowledge_search 才点名它,否则模型会去调一个不存在的工具
+    const canSearch = parts.availableTools?.includes('knowledge_search') === true
     blocks.push(
       [
         '## 你的知识库索引',
-        '下面是你已经沉淀的知识页。**需要依据时,用 knowledge_search 工具检索正文,不要凭索引猜测。**',
+        canSearch
+          ? '下面是你已经沉淀的知识页。**需要依据时,用 knowledge_search 工具检索正文,不要凭索引猜测。**'
+          : '下面是你已经沉淀的知识页索引(只有描述与锚点,没有正文)。**当前没有可检索正文的工具,需要原文时如实说明缺什么,不要凭索引编造内容。**',
         '每条都带锚点(paperId + page),引用时必须原样带上锚点。',
         '',
         clip(parts.knowledgeIndex.trim(), PROMPT_LIMITS.knowledgeIndex),

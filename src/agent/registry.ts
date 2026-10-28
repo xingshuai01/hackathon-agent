@@ -36,14 +36,31 @@ export function zodToParameters(schema: z.ZodType<unknown>): Record<string, unkn
 export function createToolRegistry(): ToolRegistry {
   const tools = new Map<string, Tool<unknown>>()
 
+  /** 已告警过的工具名,避免每次渲染 schema 都刷一遍 */
+  const degradedWarned = new Set<string>()
+
   function describe(tool: Tool<unknown>): Promise<string> | string {
     // schema 渲染阶段没有真实入参,用 undefined 探测一次;
     // 若工具的 description 依赖入参而抛错,退化为名字,不阻断整个列表渲染。
+    // 但**不能静默**:退化后模型看到的描述只剩工具名,能力会明显下降,
+    // 所以每个工具只告警一次,让人能发现「描述悄悄变差了」。
     try {
       return tool.description(undefined as never)
     } catch {
+      if (!degradedWarned.has(tool.name)) {
+        degradedWarned.add(tool.name)
+        console.warn(
+          `[registry] 工具 ${tool.name} 的 description 无参探测抛错,已退化为工具名;` +
+            `请让它能接受 undefined 入参,否则模型看到的描述会变差`,
+        )
+      }
       return tool.name
     }
+  }
+
+  /** 按白名单取子集。子 Agent 用它限定能力范围(FR-D4) */
+  function subsetOf(names: readonly string[]): readonly Tool<unknown>[] {
+    return names.map((n) => tools.get(n)).filter((t): t is Tool<unknown> => t !== undefined)
   }
 
   return {
@@ -70,11 +87,13 @@ export function createToolRegistry(): ToolRegistry {
     },
 
     subset(names) {
-      return names.map((n) => tools.get(n)).filter((t): t is Tool<unknown> => t !== undefined)
+      return subsetOf(names)
     },
 
     async schemas(names) {
-      const picked = names === undefined ? [...tools.values()] : this.subset(names)
+      // 用闭包函数而不是 this.subset —— 调用方一旦写成
+      // `const { schemas } = registry`,this 就丢了,会静默返回空列表。
+      const picked = names === undefined ? [...tools.values()] : subsetOf(names)
       const out: DeepSeekToolSchema[] = []
       for (const tool of picked) {
         out.push({
