@@ -16,6 +16,8 @@ export interface PromptParts {
   readonly knowledgeIndex?: string
   /** C 模块产出的技能清单(`SkillStore.manifest()`) */
   readonly skillManifest?: string
+  /** 本次任务命中的技能正文(懒加载结果)。与清单分开,各有预算 */
+  readonly skillBody?: string
   /** 额外约束(运行模式、当前日期等) */
   readonly notes?: readonly string[]
   /**
@@ -33,6 +35,8 @@ export interface PromptParts {
 export const PROMPT_LIMITS = {
   knowledgeIndex: 15_000,
   skillManifest: 8_000,
+  /** 技能正文只在命中后才注入,单次给 4k:清单 8k 之外单独计 */
+  skillBody: 4_000,
 } as const
 
 function clip(text: string, limit: number): string {
@@ -72,6 +76,19 @@ export function buildSystemPrompt(parts: PromptParts): string {
         '下面是你的技能清单(只列元数据)。**遇到匹配的任务时,先按技能给出的流程与判据行事。**',
         '',
         clip(parts.skillManifest.trim(), PROMPT_LIMITS.skillManifest),
+      ].join('\n'),
+    )
+  }
+
+  // 命中的技能正文。与清单分开渲染:清单是「有哪些」,正文是「怎么做」。
+  // 没有正文时不要留空块 —— 空标题会让模型以为技能里没写东西
+  if (parts.skillBody !== undefined && parts.skillBody.trim() !== '') {
+    blocks.push(
+      [
+        '## 本次任务适用的技能(已加载正文)',
+        '**按下面的流程与判据执行。判据是硬门槛:不满足就停下来说明,不要跳过。**',
+        '',
+        clip(parts.skillBody.trim(), PROMPT_LIMITS.skillBody),
       ].join('\n'),
     )
   }

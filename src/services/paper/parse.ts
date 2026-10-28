@@ -425,6 +425,14 @@ export interface AssembleInput {
 export interface AssembleResult {
   readonly doc: PaperDoc
   readonly warnings: readonly string[]
+  /**
+   * 清洗后的分页行(已去页眉页脚),保留真实页码。
+   *
+   * 为什么必须透传:A 模块的 quote → 真页码反查要靠它。实测模型自报页码
+   * 20 条错 20 条(偏移不恒定),唯一可信的锚点来源就是这份原文。
+   * 下游 `attachPageByQuote()` 直接吃这个字段,不必重新解析一次 PDF。
+   */
+  readonly pageLines: readonly PageLine[]
 }
 
 /** 判断一页是否「解析成功」:去掉空白后至少这么多字符才算 */
@@ -497,7 +505,7 @@ export function assemblePaperDoc(input: AssembleInput): AssembleResult {
     parseQuality,
   }
 
-  return { doc, warnings }
+  return { doc, warnings, pageLines: cleaned }
 }
 
 // ─────────────────────────────────────────────────────────────

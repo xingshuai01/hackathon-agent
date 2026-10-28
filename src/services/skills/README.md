@@ -60,12 +60,29 @@ AtomicNote[] ──generate.ts──▶ Skill(needs_review) ──人工审核�
 
 ## 完成判据
 
-- [ ] 手写 1 个真实科研技能通过 `validateSkillStructure()`
-- [ ] 缺节 / 失败模式<3 条 → `incomplete`,**拒绝加载**(不是警告)
-- [ ] 启动只扫元数据,日志能证明正文是懒加载的
-- [ ] `manifest()` 超预算时有压缩策略
-- [ ] `match()` 抽 5 个任务,≥4 次正确
-- [ ] `generate.ts` 产出标 `needs_review`
+- [x] 手写 1 个真实科研技能通过 `validateSkillStructure()`(`skills/ai-code-review-gate`,status=active 且填了 reviewedBy)
+- [x] 缺节 / 失败模式<3 条 → **拒绝加载**(不是警告)
+- [x] 启动只扫元数据,日志能证明正文是懒加载的(`manifest: scanned N dirs, metadataReads=…, bodyReads=…`)
+- [x] `manifest()` 超预算时有压缩策略(先全文,超了压成纯 skillId)
+- [ ] `match()` 抽 5 个任务,≥4 次正确 —— **未系统性验证**,目前只验证了单个命中
+- [x] `generate.ts` 产出标 `needs_review`
+
+## 接线状态(已完成)
+
+这个模块最容易「写完但没插电」的地方,三个入口都已接上:
+
+| 入口 | 位置 | 行为 |
+|---|---|---|
+| 清单 | `main.ts` `cmdAsk` | `manifest()` → `buildSystemPrompt({ skillManifest })`,只进元数据 |
+| 正文 | `main.ts` `cmdAsk` | `match(task)` 命中 → `renderSkillForPrompt()` → `buildSystemPrompt({ skillBody })` |
+| 生成 | `main.ts` `cmdIngest` | `ingestPaper()` 成功 → `generateSkillDraft()` → `skills/_drafts/<skillId>.md` |
+| 运维 | `main.ts` `cmdSkills` | `skills list / check / promote` |
+
+`skill_load` 事件由 `createSkillStore(dir, { events })` 直接发出,传 `bus` 后 CLI 渲染器立即可见。
+
+**为什么草案进 `_drafts/` 而不是 `save()`**:`save()` 会硬拦校验不通过的技能,
+而草案**按设计**不合格(推不出判据/失败模式/工具映射)。`_drafts` 没有 `SKILL.md`,
+`listSkillIds()` 会跳过它,技能库不被污染,人又能找到待办。
 
 ## 开发时怎么不被别人卡住
 

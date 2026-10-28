@@ -33,6 +33,91 @@ export function zodToParameters(schema: z.ZodType<unknown>): Record<string, unkn
   return rest
 }
 
+/**
+ * 从 JSON Schema 合成一个「能过校验」的示例入参。
+ *
+ * 只填与类型相称的占位值,不猜业务语义:字符串给 `'x'`(能过 `min(1)`)、
+ * 数字给 `1`(能过 `positive()`)、数组给 `[]`。目的是让 `description(input)`
+ * 这类只读字段的回调不崩,而不是模拟真实调用。
+ */
+function synthesizeFromSchema(schema: z.ZodType<unknown>): Record<string, unknown> | null {
+  let json: Record<string, unknown>
+  try {
+    json = z.toJSONSchema(schema) as Record<string, unknown>
+  } catch {
+    return null
+  }
+  const properties = json['properties']
+  if (properties === undefined || typeof properties !== 'object') return null
+
+  const out: Record<string, unknown> = {}
+  for (const [key, raw] of Object.entries(properties as Record<string, unknown>)) {
+    if (raw === null || typeof raw !== 'object') continue
+    const field = raw as Record<string, unknown>
+    if (field['default'] !== undefined) {
+      out[key] = field['default']
+      continue
+    }
+    const enumValues = field['enum']
+    if (Array.isArray(enumValues) && enumValues.length > 0) {
+      out[key] = enumValues[0]
+      continue
+    }
+    switch (field['type']) {
+      case 'string':
+        out[key] = 'x'
+        break
+      case 'number':
+      case 'integer':
+        out[key] = 1
+        break
+      case 'boolean':
+        out[key] = false
+        break
+      case 'array':
+        out[key] = []
+        break
+      case 'object':
+        out[key] = {}
+        break
+      default:
+        break
+    }
+  }
+  return out
+}
+
+/**
+ * 为「不执行工具、只问元信息」的场景构造一个够用的入参。
+ *
+ * `description(input)` 与 `isReadOnly(input)` 的签名都要求入参,但渲染 schema
+ * 和 `tools doctor` 时还没有真实调用。直接传 `undefined` 会让任何
+ * `input.foo` 当场崩 —— 现有 `sciencepal_query` 就踩过这个坑,
+ * 表现为日志里一句「description 无参探测抛错,已退化为工具名」。
+ *
+ * 三级尝试:
+ *   1. `safeParse({})` —— 全可选字段的 schema,拿到的是**真实合法**入参
+ *   2. 从 JSON Schema 合成占位值再解析 —— 必填字段也能给个形状对的东西
+ *   3. 都不行才 undefined,由调用方兜底
+ *
+ * B 模块生成的工具几乎都有必填参数,第 2 级是它们能正常渲染描述的关键。
+ */
+export function probeInput<In>(tool: Tool<In>): In | undefined {
+  try {
+    const empty = tool.inputSchema.safeParse({})
+    if (empty.success) return empty.data
+
+    const synthesized = synthesizeFromSchema(tool.inputSchema)
+    if (synthesized !== null) {
+      const parsed = tool.inputSchema.safeParse(synthesized)
+      if (parsed.success) return parsed.data
+    }
+  } catch {
+    // schema 本身有问题(比如用了 z.custom),交给调用方兜底
+  }
+  return undefined
+}
+
 export function createToolRegistry(): ToolRegistry {
   const tools = new Map<string, Tool<unknown>>()
 
@@ -40,18 +125,19 @@ export function createToolRegistry(): ToolRegistry {
   const degradedWarned = new Set<string>()
 
   function describe(tool: Tool<unknown>): Promise<string> | string {
-    // schema 渲染阶段没有真实入参,用 undefined 探测一次;
-    // 若工具的 description 依赖入参而抛错,退化为名字,不阻断整个列表渲染。
+    // 渲染 schema 时没有真实入参:先用 schema 探一个合法空入参,
+    // 探不到(有必填字段)才退到 undefined,再崩就降级成工具名。
     // 但**不能静默**:退化后模型看到的描述只剩工具名,能力会明显下降,
     // 所以每个工具只告警一次,让人能发现「描述悄悄变差了」。
+    const probe = probeInput(tool)
     try {
-      return tool.description(undefined as never)
+      return tool.description(probe as never)
     } catch {
       if (!degradedWarned.has(tool.name)) {
         degradedWarned.add(tool.name)
         console.warn(
           `[registry] 工具 ${tool.name} 的 description 无参探测抛错,已退化为工具名;` +
-            `请让它能接受 undefined 入参,否则模型看到的描述会变差`,
+            `请让 description 在空入参下也能返回(或用 z.strictObject 给字段默认值)`,
         )
       }
       return tool.name

@@ -351,3 +351,50 @@ describe('主循环 · 事件与白名单', () => {
     assert.match(bad, /提示:重试一次/)
   })
 })
+
+// ─────────────────────────────────────────────────────────────
+// 进度上报通道
+// ─────────────────────────────────────────────────────────────
+
+describe('loop · 进度上报', () => {
+  // onProgress 由编排层注入,loop 只负责原样透传。
+  // 曾经 main.ts 忘了注入,结果任何工具调它都是静默丢弃,
+  // 长任务在 UI 上就是黑屏 —— 这条用例守住「透传不丢」。
+  const progressTool = buildTool({
+    name: 'slow_tool',
+    description: () => '会上报进度的慢工具',
+    inputSchema: z.strictObject({ steps: z.number() }),
+    async call(input, ctx) {
+      for (let i = 1; i <= input.steps; i += 1) {
+        ctx.onProgress?.({ step: `第 ${String(i)} 步`, done: i, total: input.steps })
+      }
+      return toolOk({ steps: input.steps }, `完成 ${String(input.steps)} 步`)
+    },
+  })
+
+  it('工具调用 ctx.onProgress 后能收到事件', async () => {
+    const llm = createFakeLlm([
+      { text: '开始', toolCalls: [fakeToolCall('p1', 'slow_tool', { steps: 3 })] },
+      { text: '结束' },
+    ])
+    const events: AgentEvent[] = []
+    const deps = {
+      llm,
+      registry: createToolRegistry(),
+      emit: (e: AgentEvent) => events.push(e),
+      toolContext: {
+        ...makeToolContext(),
+        onProgress: (p: { step: string; done: number; total: number }) => {
+          events.push({ type: 'progress', ...p })
+        },
+      },
+    }
+    deps.registry.register(progressTool)
+
+    await runLoop(makeOptions(), deps)
+
+    const progress = events.filter((e) => e.type === 'progress')
+    assert.equal(progress.length, 3)
+    assert.deepEqual(progress[0], { type: 'progress', step: '第 1 步', done: 1, total: 3 })
+  })
+})
