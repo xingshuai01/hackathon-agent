@@ -1,0 +1,13 @@
+{
+  "arxivId": "2210.03629",
+  "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+  "venue": "ICLR 2023",
+  "url": "https://arxiv.org/abs/2210.03629",
+  "pdfUrl": "https://arxiv.org/pdf/2210.03629",
+  "sha256": "f285b0971ae4a790e402fb93966bed3adde2cf0a04977d08b2b40d6ab0cace69",
+  "bytes": 633805,
+  "pages": 34,
+  "whyThisPaper": "方法类、章节编号清晰、含显式 error analysis(对应技能七节结构的第4节 常见失败模式);主题与本项目(agent 主循环)同域,蒸馏出的技能可直接用于答辩对比。",
+  "downloadedAt": "2026-10-28T12:17:43.486Z",
+  "note": "PDF 本身不入库(版权+体积),按 sha256 校验;派生结果见 fixtures/reading/"
+}

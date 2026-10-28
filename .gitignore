@@ -64,3 +64,6 @@ tmp/
 .tmp/
 scratch/
 *.tmp
+
+# 论文 PDF 不入库(版权+体积),用 fixtures/papers/*.json 里的 sha256 校验
+fixtures/papers/*.pdf
