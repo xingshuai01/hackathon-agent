@@ -18,6 +18,7 @@
     "verify": "npm run typecheck && npm run check:rules && npm test"
   },
   "dependencies": {
+    "pdfjs-dist": "^6.4.299",
     "zod": "^4.6.7"
   },
   "devDependencies": {

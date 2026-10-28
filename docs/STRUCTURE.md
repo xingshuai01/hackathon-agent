@@ -80,8 +80,8 @@ hackathon-agent/
 │       │
 │       ├── paper/                           [骨架] 共享底座(A/B/C 的唯一共同上游)
 │       │   ├── types.ts                     ★ PaperDoc / gateByParseQuality
-│       │   ├── fetch.ts                     arXiv 元数据/HTML 优先
-│       │   └── parse.ts                     PDF → PaperDoc(JSON 降级路径)
+│       │   ├── parse.ts                     ✅ PDF → PaperDoc(pdfjs 按页取文本,页码 100%)
+│       │   └── fetch.ts                     arXiv 元数据/HTML 优先                      [待写]
 │       │
 │       ├── trace/                           [骨架] 运行追踪
 │       │   ├── writer.ts                    JSONL 写入
