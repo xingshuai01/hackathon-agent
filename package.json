@@ -8,6 +8,10 @@
     "node": ">=22.18"
   },
   "scripts": {
+    "start": "node src/main.ts",
+    "ask": "node src/main.ts ask",
+    "doctor": "node src/main.ts tools doctor",
+    "demo": "node src/main.ts ask \"帮我算一下 1234 乘 5678 等于多少\" --fake",
     "typecheck": "tsc --noEmit",
     "test": "node --test --experimental-test-isolation=none \"test/**/*.test.ts\"",
     "check:rules": "node scripts/check-rules.mjs",

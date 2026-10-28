@@ -15,7 +15,7 @@ import type { LoopOptions } from '../../src/agent/types.ts'
 import { partitionToolCalls } from '../../src/agent/types.ts'
 import type { AgentEvent } from '../../src/ui/events.ts'
 import { buildTool, toolFail, toolOk, type ToolContext } from '../../src/tools/types.ts'
-import { createFakeLlm, createFailingLlm, fakeToolCall } from './fakeLlm.ts'
+import { createFakeLlm, createFailingLlm, fakeToolCall } from '../../src/agent/fakeLlm.ts'
 
 // ─────────────────────────────────────────────────────────────
 // 夹具
