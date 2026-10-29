@@ -28,7 +28,7 @@ import { gateByParseQuality } from '../paper/types.ts'
 import type { PaperDoc, Paragraph } from '../paper/types.ts'
 
 import { attachPageByQuote } from './anchor.ts'
-import type { AtomicNote, Confidence, NoteKind } from './types.ts'
+import { validateNote, type AtomicNote, type Confidence, type NoteKind } from './types.ts'
 
 // ─────────────────────────────────────────────────────────────
 // 1. 参数
@@ -76,12 +76,16 @@ export type RejectReason =
   | 'no_anchor'
   /** 段落太短,没有独立论断价值 */
   | 'too_short'
-  /** 作者列表 / 单位 / 编号行等非正文内容 */
+  /** 作者列表 / 单位 / 编号行 / 版权声明 / 许可样板等非正文内容 */
   | 'noise'
+  /** 论文标题行(标题不是论断) */
+  | 'title'
   /** noteId 重复(同一页同一 description) */
   | 'duplicate'
   /** 超出 maxNotes 上限(只汇总记一条,不逐条铺开) */
   | 'overflow'
+  /** 组好的知识页过不了 validateNote(emit 前的最后自检,契约 #4-A) */
+  | 'contract_violation'
 
 export interface RejectedCandidate {
   readonly reason: RejectReason
@@ -218,11 +222,17 @@ const NOISE_PATTERNS: readonly RegExp[] = [
   /https?:\/\//, // 链接
   /arxiv:\s*\d{4}\.\d{4,5}/i, // arXiv 编号
   /^\s*\d+(\s*[,;]\s*\d+)*\s+\S/, // 以纯编号开头(作者上标的残留)
+  // ── 版权 / 许可样板(arXiv 首页极常见,实测混进了知识页)──
+  /provided proper attribution/i,
+  /reproduce (the )?(tables and figures|this paper)/i,
+  /hereby grants? permission/i,
+  /\ball rights reserved\b/i,
+  /^\s*copyright\b/i,
+  /^\s*©/,
 ]
 
 /** 英文功能词。作者列表与单位行里几乎没有它们,正文里到处都是 */
-const STOPWORDS = new Set([
-  'the', 'of', 'and', 'is', 'are', 'was', 'were', 'we', 'our', 'in', 'on', 'to', 'that', 'this',
+const STOPWORDS = new Set([  'the', 'of', 'and', 'is', 'are', 'was', 'were', 'we', 'our', 'in', 'on', 'to', 'that', 'this',
   'with', 'for', 'as', 'by', 'an', 'be', 'it', 'from', 'at', 'or', 'which', 'can', 'not', 'has',
   'have', 'their', 'they', 'these', 'such', 'more', 'than', 'also', 'but', 'when', 'while',
 ])
@@ -400,11 +410,59 @@ export function classifyKind(heading: string, text: string): NoteKind {
  * 首句是段落里最可能自带主语的句子;截断只在上限处发生,不做智能摘要
  * (那需要模型,而这一步刻意不依赖模型)。
  */
+/**
+ * 描述句的最小长度,与 `validateNote` 的 description 下限一致(8 字符)。
+ *
+ * 为什么不是 20:合法短句如 "First sentence." 有 15 字符,不该被误杀。
+ * 真正的碎片短得多(实测 "els." 4 字符、"2018)." 7 字符),
+ * 8 这个阈值刚好把它们挡住,又不误伤正常短句。
+ */
+const MIN_DESCRIPTION_SENTENCE_CHARS = 8
+/** 没有正常句子时,长尾巴片段至少要有这么多字符才可退而求其次当描述 */
+const MIN_FALLBACK_SENTENCE_CHARS = 20
+
+/**
+ * 取第一个「像样的句子」。
+ *
+ * 为什么不能简单取首句:PDF 文本的 chunk 可能从句子中间开始
+ * (断词换行、引用标记之后),首句会变成碎片。实测 BERT 篇 2/20 条
+ * description 是 `"els."`、`"2018)."` 这类垃圾,既无法召回也被契约拦下。
+ *
+ * 退路:小写开头的句子先记下最长的 —— 有些 chunk 整块都是被切断的尾巴,
+ * 但长尾巴仍有信息量(如 "most widely-used approaches in this section."),
+ * 只有短碎片("els.")才彻底没有召回价值。
+ */
+function firstSubstantialSentence(text: string): string | null {
+  let longest = ''
+  for (const sentence of splitSentences(text)) {
+    const trimmed = sentence.trim()
+    if (trimmed.length < MIN_DESCRIPTION_SENTENCE_CHARS) continue
+    // 以标点 / 右括号开头:是上一句的尾巴
+    if (/^[.,;:)\]}]/.test(trimmed)) continue
+    // 以引用年份尾巴开头:"(Brown et al., 2014) methods." 这种碎片
+    if (/^\d{4}\)/.test(trimmed)) continue
+    // 以小写字母开头:句子中间被切开。先记下最长的,继续找正常句子。
+    if (/^[a-z]/.test(trimmed)) {
+      if (trimmed.length > longest.length) longest = trimmed
+      continue
+    }
+    return trimmed
+  }
+  if (longest.length >= MIN_FALLBACK_SENTENCE_CHARS) return longest
+  return null
+}
+
+/**
+ * 生成描述。**找不到像样的句子时返回空字符串**,而不是退回原文:
+ * 整块都是碎片的 chunk 本来就没有可召回的论断,退回原文只会产出垃圾描述。
+ * 空描述会被 validateNote 拦下,走 rejected(contract_violation)—— 这是 fail-closed。
+ */
 export function buildDescription(text: string): string {
-  const first = splitSentences(text)[0] ?? text
-  const trimmed = first.trim()
-  if (trimmed.length <= MAX_DESCRIPTION_CHARS) return trimmed
-  return `${trimmed.slice(0, MAX_DESCRIPTION_CHARS - 1).trimEnd()}…`
+  const substantial = firstSubstantialSentence(text)
+  if (substantial === null) return ''
+  const base = substantial.trim()
+  if (base.length <= MAX_DESCRIPTION_CHARS) return base
+  return `${base.slice(0, MAX_DESCRIPTION_CHARS - 1).trimEnd()}…`
 }
 
 /**
@@ -457,6 +515,25 @@ function countParagraphs(doc: PaperDoc): number {
  *   2. 按章节配额挑出 maxNotes 条(而不是取前 N 条)
  *   3. 组建成知识页并做 noteId 去重
  */
+
+/** 归一化后比较:去掉所有非字母数字,统一小写(容忍空格/大小写/上标差异) */
+function normalizeForCompare(text: string): string {
+  return text.replace(/[^\p{L}\p{N}]+/gu, '').toLowerCase()
+}
+
+/**
+ * 判断 chunk 是否就是论文标题。
+ *
+ * 实测:RAG 篇的标题行被当成了 claim 知识页。标题不是论断,必须剔除。
+ * 比较策略:整段归一化后等于标题,或(段落足够长时)包含标题。
+ */
+function isTitleChunk(text: string, normalizedTitle: string): boolean {
+  if (normalizedTitle.length < 20) return false
+  const chunk = normalizeForCompare(text)
+  if (chunk === normalizedTitle) return true
+  return chunk.length >= 30 && chunk.includes(normalizedTitle)
+}
+
 export function extractNotes(input: ExtractInput, options: ExtractOptions = {}): ExtractResult {
   const paragraphs = countParagraphs(input.doc)
   const verdict = gateByParseQuality(input.doc.parseQuality)
@@ -479,6 +556,7 @@ export function extractNotes(input: ExtractInput, options: ExtractOptions = {}):
   let candidates = 0
   let located = 0
   let exact = 0
+  const normalizedTitle = normalizeForCompare(input.doc.title)
 
   // ── 阶段 1:过滤 + 反查 ──
   for (const chunk of chunks) {
@@ -498,7 +576,16 @@ export function extractNotes(input: ExtractInput, options: ExtractOptions = {}):
         reason: 'noise',
         page: chunk.hintPage,
         snippet,
-        detail: '不像成句正文(作者列表 / 单位 / 编号行)',
+        detail: '不像成句正文(作者列表 / 单位 / 编号行 / 版权样板)',
+      })
+      continue
+    }
+    if (isTitleChunk(chunk.text, normalizedTitle)) {
+      rejected.push({
+        reason: 'title',
+        page: chunk.hintPage,
+        snippet,
+        detail: '与论文标题一致 —— 标题不是论断,不进知识库',
       })
       continue
     }
@@ -596,7 +683,8 @@ export function extractNotes(input: ExtractInput, options: ExtractOptions = {}):
       continue
     }
     seen.add(noteId)
-    notes.push({
+
+    const note: AtomicNote = {
       noteId,
       paperId: input.doc.paperId,
       page: item.page,
@@ -606,7 +694,23 @@ export function extractNotes(input: ExtractInput, options: ExtractOptions = {}):
       evidence: { quote: item.chunk.text, page: item.page },
       confidence: item.confidence,
       createdAt: clock().toISOString(),
-    })
+    }
+
+    // ── 契约自检(emit 前的最后一道闸)──
+    // store 的 putAll 校验抛错是设计行为,但**脏数据不该流到 store 才被拦**。
+    // 在这里拦住:不合格的转 rejected,让 ingest 拿到的是「全合格」清单。
+    const verdict = validateNote(note)
+    if (!verdict.ok) {
+      rejected.push({
+        reason: 'contract_violation',
+        page: item.page,
+        snippet: description,
+        detail: verdict.reasons.join('; '),
+      })
+      continue
+    }
+
+    notes.push(note)
   }
 
   return {

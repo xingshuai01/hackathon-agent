@@ -485,11 +485,19 @@ async function cmdIngest(args: Args): Promise<number> {
       continue
     }
 
-    const result = await ingestPaper(
-      store,
-      { doc: parsed.doc, pageLines: parsed.pageLines },
-      { force: args.force, log: (line) => console.log(`  ${line}`) },
-    )
+    // 铁律 8:即使 ingestPaper 内部有未兜住的路径,单篇失败也不能杀整批
+    let result
+    try {
+      result = await ingestPaper(
+        store,
+        { doc: parsed.doc, pageLines: parsed.pageLines },
+        { force: args.force, log: (line) => console.log(`  ${line}`) },
+      )
+    } catch (error: unknown) {
+      console.error(`  ✗ ingest 异常:${errorMessage(error)}`)
+      tally.failed += 1
+      continue
+    }
 
     switch (result.status) {
       case 'stored':
@@ -505,6 +513,9 @@ async function cmdIngest(args: Args): Promise<number> {
         break
       case 'empty':
         tally.empty += 1
+        break
+      case 'failed':
+        tally.failed += 1
         break
     }
   }

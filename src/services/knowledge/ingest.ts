@@ -81,6 +81,12 @@ export type IngestResult =
       readonly stats: ExtractStats
       readonly index: IndexFileStats | null
     }
+  | {
+      /** 落盘/校验失败。**上层必须继续处理下一篇**,不得中止整批(铁律 8) */
+      readonly status: 'failed'
+      readonly paperId: string
+      readonly message: string
+    }
 
 /** 抽出来的条数低于 AC-A1.1 下限时的提示语(不阻断入库,只提醒) */
 function lowYieldWarning(count: number): string | null {
@@ -139,11 +145,19 @@ export async function ingestPaper(
   if (warning !== null) log(`· ${warning}`)
 
   // ── 4. 落盘 ──
+  // 铁律 8:进程永不崩。putAll 的校验抛错是「最后一道闸」的设计行为,
+  // 但**单篇失败不能杀掉整批** —— 记为 failed,由上层继续下一本。
   const meta = { title: doc.title }
-  if (hasPutAll(store)) {
-    await store.putAll(notes, meta)
-  } else {
-    for (const note of notes) await store.put(note)
+  try {
+    if (hasPutAll(store)) {
+      await store.putAll(notes, meta)
+    } else {
+      for (const note of notes) await store.put(note)
+    }
+  } catch (err) {
+    const message = `落盘失败:${err instanceof Error ? err.message : String(err)}`
+    log(`· ${message}`)
+    return { status: 'failed', paperId, message }
   }
   log(`· 已写入 ${paperId}(${notes.length} 条)`)
 

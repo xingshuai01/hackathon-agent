@@ -290,12 +290,34 @@ describe('extract · 分类', () => {
 })
 
 describe('extract · 描述与 id', () => {
-  it('描述取首句并截断到上限', () => {
+  it('描述取首个像样的句子,超长截断到上限', () => {
     assert.equal(buildDescription('First sentence. Second sentence.'), 'First sentence.')
-    const long = `${'a'.repeat(200)}. tail`
+    // 首句本身就超长 → 被截断到 MAX_DESCRIPTION_CHARS 并加省略号
+    const long = `${'A'.repeat(200)}. tail`
     const description = buildDescription(long)
     assert.ok(description.length <= 120)
     assert.ok(description.endsWith('…'))
+  })
+
+  it('首句是碎片时取下一句(断词换行的真实产物)', () => {
+    assert.equal(
+      buildDescription('els. There is a long history of pre-training language representations.'),
+      'There is a long history of pre-training language representations.',
+    )
+    assert.equal(
+      buildDescription('2018). These include sentence-level tasks such as natural language inference.'),
+      'These include sentence-level tasks such as natural language inference.',
+    )
+  })
+
+  it('没有正常句子时退回最长片段;全是短碎片才返回空串(fail-closed)', () => {
+    // 长尾巴片段仍有信息量,可用
+    assert.equal(
+      buildDescription('most widely-used approaches in this section.'),
+      'most widely-used approaches in this section.',
+    )
+    // 全是短碎片:没有可召回的描述,交给 validateNote 拒绝
+    assert.equal(buildDescription('els. 2018).'), '')
   })
 
   it('noteId 由 description 推导,同一描述恒定', () => {

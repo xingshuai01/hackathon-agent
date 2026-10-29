@@ -1,6 +1,6 @@
 <!--
   技能草案 · 自动生成,未经人工审核。
-  生成时间:2026-10-29T19:37:47.114Z
+  生成时间:2026-10-29T19:49:43.526Z
 
   ★ 状态固定为 needs_review。补齐下面几项后才能进技能库:
     - 第 3 节「三、方法→工具映射」为空:需要 B 模块的真实工具名清单才能填,生成器不猜工具名
@@ -34,12 +34,12 @@ status: needs_review
 - {"concept":"Since our model contains no recurrence and no convolution, in order for the model to make use of the order of the seque…","note":"Since our model contains no recurrence and no convolution, in order for the model to make use of the order of the sequence, we must inject some information abo…"}
 - {"concept":"To evaluate the importance of different components of the Transformer, we varied our base model in different ways, meas…","note":"To evaluate the importance of different components of the Transformer, we varied our base model in different ways, measuring the change in performance on Engli…"}
 - {"concept":"In Table 3 rows (B), we observe that reducing the attention key size dk hurts model quality.","note":"In Table 3 rows (B), we observe that reducing the attention key size dk hurts model quality. This suggests that determining compatibility is not easy and that …"}
-- {"concept":"Provided proper attribution is provided, Google hereby grants permission to reproduce the tables and figures in this pa…","note":"Provided proper attribution is provided, Google hereby grants permission to reproduce the tables and figures in this paper solely for use in journalistic or sc…"}
 - {"concept":"Recurrent neural networks, long short-term memory [13] and gated recurrent [7] neural networks in particular, have been…","note":"Recurrent neural networks, long short-term memory [13] and gated recurrent [7] neural networks in particular, have been firmly established as state of the art …"}
 - {"concept":"Encoder: The encoder is composed of a stack of N = 6 identical layers.","note":"Encoder: The encoder is composed of a stack of N = 6 identical layers. Each layer has two sub-layers. The first is a multi-head self-attention mechanism, and t…"}
 - {"concept":"An attention function can be described as mapping a query and a set of key-value pairs to an output, where the query, k…","note":"An attention function can be described as mapping a query and a set of key-value pairs to an output, where the query, keys, values, and output are all vectors.…"}
 - {"concept":"Instead of performing a single attention function with dmodel-dimensional keys, values and queries, we found it benefic…","note":"Instead of performing a single attention function with dmodel-dimensional keys, values and queries, we found it beneficial to linearly project the queries, key…"}
 - {"concept":"In addition to attention sub-layers, each of the layers in our encoder and decoder contains a fully connected feed-forw…","note":"In addition to attention sub-layers, each of the layers in our encoder and decoder contains a fully connected feed-forward network, which is applied to each po…"}
+- {"concept":"In this section we compare various aspects of self-attention layers to the recurrent and convolu- tional layers commonl…","note":"In this section we compare various aspects of self-attention layers to the recurrent and convolu- tional layers commonly used for mapping one variable-length s…"}
 - {"concept":"In this work, we presented the Transformer, the first sequence transduction model based entirely on attention, replacin…","note":"In this work, we presented the Transformer, the first sequence transduction model based entirely on attention, replacing the recurrent layers most commonly use…"}
 ## 二、标准流程
 - {"stage":"1. Most competitive neural sequence transduction models have an encoder-decoder structure [5, 2, 35].","input":"（草案·需人工确认）","action":"Most competitive neural sequence transduction models have an encoder-decoder structure [5, 2, 35].","criteria":"知识页给不出本阶段的通过判据,审核人必须补一条可判断的标准 （草案·需人工确认）"}
@@ -58,12 +58,12 @@ status: needs_review
 - {"term":"The goal of reducing sequential computation also forms the foundation of the Extended Neural GPU [16], ByteNet [18] and…","disambiguation":"The goal of reducing sequential computation also forms the foundation of the Extended Neural GPU [16], ByteNet [18] and ConvS2S [9], all of which use convoluti…"}
 - {"term":"We call our particular attention \"Scaled Dot-Product Attention\" (Figure 2).","disambiguation":"We call our particular attention \"Scaled Dot-Product Attention\" (Figure 2). The input consists of queries and keys of dimension dk, and values of dimension dv …"}
 ## 六、证据索引
-- {"claim":"Provided proper attribution is provided, Google hereby grants permission to reproduce the tables and figures in this pa…","noteId":"arxiv:1706.03762#p1#f247d4"}
 - {"claim":"The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include…","noteId":"arxiv:1706.03762#p1#6a9ef8"}
 - {"claim":"Recurrent neural networks, long short-term memory [13] and gated recurrent [7] neural networks in particular, have been…","noteId":"arxiv:1706.03762#p2#5d37e9"}
 - {"claim":"Encoder: The encoder is composed of a stack of N = 6 identical layers.","noteId":"arxiv:1706.03762#p3#3e040b"}
 - {"claim":"An attention function can be described as mapping a query and a set of key-value pairs to an output, where the query, k…","noteId":"arxiv:1706.03762#p3#07a894"}
 - {"claim":"Instead of performing a single attention function with dmodel-dimensional keys, values and queries, we found it benefic…","noteId":"arxiv:1706.03762#p4#a59107"}
 - {"claim":"In addition to attention sub-layers, each of the layers in our encoder and decoder contains a fully connected feed-forw…","noteId":"arxiv:1706.03762#p5#0602d0"}
+- {"claim":"In this section we compare various aspects of self-attention layers to the recurrent and convolu- tional layers commonl…","noteId":"arxiv:1706.03762#p6#f16fa9"}
 - {"claim":"In this work, we presented the Transformer, the first sequence transduction model based entirely on attention, replacin…","noteId":"arxiv:1706.03762#p10#0d4fc1"}
 ## 七、负向约束
