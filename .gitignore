@@ -67,3 +67,16 @@ scratch/
 
 # 论文 PDF 不入库(版权+体积),用 fixtures/papers/*.json 里的 sha256 校验
 fixtures/papers/*.pdf
+
+# ---- 生成物提交策略(DEC-034)----
+# 知识页是**派生数据**:一条 ingest 命令即可重建。
+# 且 createdAt 是运行时刻 —— 两人各跑一次就产生大量无意义 diff。
+# 体积:20 条知识页 ≈ 15KB,10 篇论文就 150KB。
+# 固定样例请放 fixtures/knowledge/(必须入库,评审"打开就能看")
+/knowledge/*/
+!/knowledge/README.md
+
+# 技能草案要入库 —— 它是**人工审核待办清单**,
+# 是数据铁律 #4(技能未经审核不得 active)的证据链,体积只有几 KB。
+# 已晋升的 skills/<id>/SKILL.md 同样是资产,一并入库。
+

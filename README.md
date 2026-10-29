@@ -25,7 +25,7 @@
 | 交付形态 | ✅ 已定:**Web 可视化界面**(CLI 保留为兜底) |
 | 文档(需求 / 设计 / 决策 / 分工) | ✅ 就绪 |
 | 仓库 / Issue / 标签 / 里程碑 | ✅ 就绪 |
-| **契约 + 规则门禁** | ✅ 6 个冻结契约 + 检查器 + 311 个测试 |
+| **契约 + 规则门禁** | ✅ 6 个冻结契约 + 检查器 + **315 个测试** |
 | **Agent 骨架** | ✅ **可跑**(LLM 层 / 主循环 / 注册表 / CLI / 追踪 / 回放) |
 | **A 个人知识库** | ✅ 抽取 / 存储 / 检索 / 入库编排 / `knowledge_search` 工具 |
 | **B 工具库** | ⏳ 待同学 2 开发 |
@@ -37,7 +37,7 @@
 ```bash
 npm install
 npm run demo          # 用假 LLM 演示主循环,不花 API 额度
-npm run verify        # typecheck + 规则检查 + 311 个测试
+npm run verify        # typecheck + 规则检查 + 315 个测试
 
 # 模块 A:论文 → 知识库(需要真实 PDF,不入库)
 node src/main.ts ingest fixtures/papers --force
@@ -79,8 +79,9 @@ npm run doctor          # 工具注册表体检
 
 | 文档 | 回答什么 | 篇幅 |
 |---|---|---|
-| **[`docs/DECISIONS.md`](docs/DECISIONS.md)** | **为什么是这样**(31 条决策 + 备选方案 + 演进记录) | 短,先扫一遍 |
+| **[`docs/DECISIONS.md`](docs/DECISIONS.md)** | **为什么是这样**(34 条决策 + 备选方案 + 演进记录) | 短,先扫一遍 |
 | **[`docs/STRUCTURE.md`](docs/STRUCTURE.md)** | **谁改哪些文件 + 谁等谁**(目录树 / 所有权表 / import 边界 / 并行顺序) | 中,接手任务前必读 |
+| **[`docs/REVIEW-2026-10-29.md`](docs/REVIEW-2026-10-29.md)** | **代码审查报告** —— 门禁结果、表扬项、**方向性冲突的裁定**、遗留风险 | 中,了解全局现状 |
 | **[`docs/SRS.md`](docs/SRS.md)** | **做什么**(功能需求 FR-A~F + 验收标准 + 里程碑) | 长,查用 |
 | **[`docs/SDD.md`](docs/SDD.md)** | **怎么做**(架构 / 契约 / 数据模型 / 主循环 / 三模块 / Web 薄壳 / 开发计划) | 长,查用 |
 
