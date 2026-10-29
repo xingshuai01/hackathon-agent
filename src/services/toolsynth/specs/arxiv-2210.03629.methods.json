@@ -1,0 +1,157 @@
+{
+  "paper": {
+    "paperId": "arxiv:2210.03629",
+    "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+    "note": "手工审校产物:evidenceQuote 均经逐字回指校验 —— 校验程序是 test/toolsynth/quotes.test.ts(需要本地 fixtures/papers/react-2210.03629.pdf,PDF 不入库)。LLM 抽取路径见 extract.ts,本文件是「无 API key 环境下的已提交规格」(AC-B2.5 降级产物)的等价物。"
+  },
+  "specs": [
+    {
+      "methodId": "react-cotsc-majority",
+      "paperId": "arxiv:2210.03629",
+      "name": "CoT-SC 多数投票 (self-consistency majority vote)",
+      "toolName": "majority_vote",
+      "params": [
+        {
+          "name": "answers",
+          "type": "object",
+          "required": true,
+          "description": "多条 CoT 采样轨迹给出的答案列表(字符串数组,论文取 21 条、温度 0.7)"
+        }
+      ],
+      "preconditions": [
+        "已有同一问题的多条 CoT 采样答案(论文:21 条,decoding temperature 0.7)",
+        "答案需为可直接比较的字符串"
+      ],
+      "evidencePage": 5,
+      "evidenceQuote": "build a self-consistency baseline (CoT-SC) (Wang et al., 2022a;b) by sampling 21 CoT trajectories with decoding temperature 0.7 during inference and adopting the majority answer, which is found to consistently boost performance over CoT.",
+      "supportLevel": "L1"
+    },
+    {
+      "methodId": "react-cotsc-backoff",
+      "paperId": "arxiv:2210.03629",
+      "name": "CoT-SC → ReAct 回退判定",
+      "toolName": "should_backoff_to_react",
+      "params": [
+        {
+          "name": "majorityCount",
+          "type": "number",
+          "required": true,
+          "description": "多数答案在 n 条 CoT-SC 采样中出现的次数"
+        },
+        {
+          "name": "total",
+          "type": "number",
+          "required": true,
+          "description": "CoT-SC 采样总数 n"
+        }
+      ],
+      "preconditions": [
+        "已经跑完 CoT-SC 采样并统计出多数答案的票数"
+      ],
+      "evidencePage": 5,
+      "evidenceQuote": "B) CoT-SC → ReAct: when the majority answer among n CoT-SC samples occurs less than n/2 times (i.e. internal knowledge might not support the task confidently), back off to ReAct.",
+      "supportLevel": "L1"
+    },
+    {
+      "methodId": "react-step-backoff",
+      "paperId": "arxiv:2210.03629",
+      "name": "ReAct → CoT-SC 步数回退判定",
+      "toolName": "step_backoff_to_cotsc",
+      "params": [
+        {
+          "name": "stepsUsed",
+          "type": "number",
+          "required": true,
+          "description": "ReAct 已消耗的步数"
+        },
+        {
+          "name": "maxSteps",
+          "type": "number",
+          "required": false,
+          "default": 7,
+          "description": "步数上限。论文默认值:HotpotQA 7 步、FEVER 5 步,更多步数不再提升性能"
+        }
+      ],
+      "preconditions": [
+        "ReAct 在给定步数内未能给出答案",
+        "任务数据集已知(HotpotQA 用 7、FEVER 用 5)"
+      ],
+      "evidencePage": 5,
+      "evidenceQuote": "when ReAct fails to return an answer within given steps, back off to CoT-SC.",
+      "supportLevel": "L1"
+    },
+    {
+      "methodId": "react-webshop-score",
+      "paperId": "arxiv:2210.03629",
+      "name": "WebShop 平均得分与成功率",
+      "toolName": "webshop_score",
+      "params": [
+        {
+          "name": "requiredCount",
+          "type": "number",
+          "required": true,
+          "description": "任务要求的商品属性总数"
+        },
+        {
+          "name": "matchedCount",
+          "type": "number",
+          "required": true,
+          "description": "所选商品覆盖的属性数"
+        }
+      ],
+      "preconditions": [
+        "WebShop 场景:已选出商品并核对属性覆盖情况"
+      ],
+      "evidencePage": 7,
+      "evidenceQuote": "This task is evaluated by average score (percentage of desired attributes covered by the chosen product averaged across all episodes) and success rate (percentage of episodes where the chosen product satisfies all requirements) on 500 test instructions.",
+      "supportLevel": "L1"
+    },
+    {
+      "methodId": "react-alfworld-rate",
+      "paperId": "arxiv:2210.03629",
+      "name": "ALFWorld 成功率",
+      "toolName": "success_rate",
+      "params": [
+        {
+          "name": "successes",
+          "type": "number",
+          "required": true,
+          "description": "成功的局数"
+        },
+        {
+          "name": "total",
+          "type": "number",
+          "required": true,
+          "description": "总局数"
+        }
+      ],
+      "preconditions": [
+        "ALFWorld 评估场景:已有每局成功/失败的判定结果",
+        "论文评估设置:134 个未见的评估游戏"
+      ],
+      "evidencePage": 7,
+      "evidenceQuote": "Following Shridhar et al. (2020b), we evaluate on 134 unseen evaluation games",
+      "supportLevel": "L1"
+    },
+    {
+      "methodId": "react-normalize-answer",
+      "paperId": "arxiv:2210.03629",
+      "name": "EM 归一化(Rajpurkar et al., 2016)",
+      "toolName": "normalize_answer",
+      "params": [
+        {
+          "name": "text",
+          "type": "string",
+          "required": true,
+          "description": "待归一化的答案文本"
+        }
+      ],
+      "preconditions": [
+        "论文只提到用 EM 判定对错(Rajpurkar et al., 2016),归一化规则未在正文给出 —— 因此本工具降级为参数模板,待人工补实现"
+      ],
+      "evidencePage": 6,
+      "evidenceQuote": "we randomly sampled 50 trajectories with correct and incorrect answers (judged by EM) from ReAct",
+      "supportLevel": "L1"
+    }
+  ]
+}

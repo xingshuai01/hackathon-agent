@@ -31,6 +31,7 @@ import { createFakeLlm, demoScript } from './agent/fakeLlm.ts'
 import { infraTools } from './tools/infra.ts'
 import { generatedTools } from './tools/generated/registry.generated.ts'
 import { createSciencePalTool, sciencePalConfigFromEnv } from './tools/sciencepal.ts'
+import { formatDoctorReport, runDoctor } from './services/toolsynth/doctor.ts'
 import { createDeepSeekClient, configFromEnv } from './services/llm/deepseek.ts'
 import { LlmFatalError, errorMessage, type LlmClient } from './services/llm/types.ts'
 import { createTraceWriter } from './services/trace/writer.ts'
@@ -705,7 +706,8 @@ async function cmdToolsDoctor(args: Args): Promise<number> {
   }
 
   console.log(`\n已注册 ${ok} 个工具。`)
-  console.log('注:smoke test 由 B 模块提供(Issue #30),目前只有注册表体检。')
+  // B 模块接入点(Issue #30):对 src/tools/generated/ 批量跑 smoke,输出通过率(AC-B5.1)
+  console.log(formatDoctorReport(runDoctor({ generatedDir: join('src', 'tools', 'generated') })))
   return 0
 }
 

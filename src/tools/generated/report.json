@@ -1,0 +1,58 @@
+{
+  "generatedAt": "2026-10-29T08:47:12.324Z",
+  "specFiles": [
+    "D:\\桌面\\黑客松\\hackathon-agent\\src\\services\\toolsynth\\specs\\arxiv-2210.03629.methods.json"
+  ],
+  "passRate": 0.8333333333333334,
+  "tools": [
+    {
+      "toolName": "majority_vote",
+      "methodId": "react-cotsc-majority",
+      "paperId": "arxiv:2210.03629",
+      "evidencePage": 5,
+      "status": "active",
+      "reason": "smoke 通过"
+    },
+    {
+      "toolName": "should_backoff_to_react",
+      "methodId": "react-cotsc-backoff",
+      "paperId": "arxiv:2210.03629",
+      "evidencePage": 5,
+      "status": "active",
+      "reason": "smoke 通过"
+    },
+    {
+      "toolName": "step_backoff_to_cotsc",
+      "methodId": "react-step-backoff",
+      "paperId": "arxiv:2210.03629",
+      "evidencePage": 5,
+      "status": "active",
+      "reason": "smoke 通过"
+    },
+    {
+      "toolName": "webshop_score",
+      "methodId": "react-webshop-score",
+      "paperId": "arxiv:2210.03629",
+      "evidencePage": 7,
+      "status": "active",
+      "reason": "smoke 通过"
+    },
+    {
+      "toolName": "success_rate",
+      "methodId": "react-alfworld-rate",
+      "paperId": "arxiv:2210.03629",
+      "evidencePage": 7,
+      "status": "active",
+      "reason": "smoke 通过"
+    },
+    {
+      "toolName": "normalize_answer",
+      "methodId": "react-normalize-answer",
+      "paperId": "arxiv:2210.03629",
+      "evidencePage": 6,
+      "status": "draft",
+      "reason": "无 L1 实现登记:降级为参数模板 + 人工填写(AC-B2.5)"
+    }
+  ],
+  "skipped": []
+}
