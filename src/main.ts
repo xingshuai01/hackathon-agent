@@ -25,7 +25,7 @@ import { bus, type AgentEvent } from './ui/events.ts'
 import { createCliRenderer } from './ui/renderCli.ts'
 import { createToolRegistry, probeInput, type ToolRegistry } from './agent/registry.ts'
 import { runLoop } from './agent/loop.ts'
-import { LOOP_DEFAULTS, type LoopEndReason, type LoopOptions, type RunTrace } from './agent/types.ts'
+import { LOOP_DEFAULTS, type LoopEndReason, type LoopOptions, type LoopResult, type RunTrace } from './agent/types.ts'
 import { buildSystemPrompt, DEFAULT_ROLE } from './agent/prompt.ts'
 import { createFakeLlm, demoScript } from './agent/fakeLlm.ts'
 import { infraTools } from './tools/infra.ts'
@@ -43,6 +43,15 @@ import { createKnowledgeSearchTool } from './services/knowledge/tool.ts'
 import { createSkillStore } from './services/skills/store.ts'
 import { generateSkillDraft } from './services/skills/generate.ts'
 import { renderSkillForPrompt } from './services/skills/inject.ts'
+import {
+  startWebServer,
+  type ArtifactItem,
+  type KnowledgePanelItem,
+  type PanelProviders,
+  type SkillPanelItem,
+  type ToolPanelItem,
+  type WebController,
+} from '../web/server.ts'
 import {
   DRAFT_DIR_NAME,
   listDrafts,
@@ -237,47 +246,50 @@ function buildRegistry(
 // 子命令
 // ─────────────────────────────────────────────────────────────
 
-async function cmdAsk(args: Args): Promise<number> {
-  const task = args.positional.join(' ').trim()
-  if (task === '') {
-    console.error('缺少任务。用法:node src/main.ts ask "<任务>"')
-    return 2
-  }
-
+/**
+ * ask 管线的共用实现:CLI 的 `ask` 命令与 Web 的 `/api/ask` 都走这里。
+ * Web 模式下不挂 CLI 渲染器(事件经总线 → SSE 出去,不需要打到服务器终端)。
+ */
+async function runAskPipeline(
+  task: string,
+  opts: {
+    readonly fake: boolean
+    readonly replay: boolean
+    readonly record: boolean
+    readonly verbose: boolean
+    /** 显式允许 undefined:exactOptionalPropertyTypes 下可选属性不能赋 undefined */
+    readonly maxTurns: number | undefined
+    readonly cli: boolean
+  },
+): Promise<LoopResult> {
   const runId = randomUUID()
-  const mode = args.replay ? 'replay' : 'live'
+  const mode = opts.replay ? 'replay' : 'live'
 
   // LLM
   let llm: LlmClient
-  if (args.fake) {
+  if (opts.fake) {
     llm = createFakeLlm(demoScript())
-    console.log('提示:--fake 模式,使用剧本化假 LLM,不消耗 API 额度\n')
+    if (opts.cli) console.log('提示:--fake 模式,使用剧本化假 LLM,不消耗 API 额度\n')
   } else {
     try {
       llm = createDeepSeekClient(configFromEnv())
     } catch (err) {
-      console.error(errorMessage(err))
-      console.error('\n想先看骨架跑起来?加 --fake:node src/main.ts ask "..." --fake')
-      return 2
+      bus.emit({ type: 'error', stage: 'config', message: errorMessage(err) })
+      throw new LlmFatalError(errorMessage(err))
     }
   }
 
   // replay 与 fake 下都不走 LLM 精筛:前者禁止联网,后者没有真实模型
-  const refineLlm = args.fake || args.replay ? undefined : llm
+  const refineLlm = opts.fake || opts.replay ? undefined : llm
   const knowledgeStore = new LocalMarkdownStore({ root: knowledgeRoot() })
-  const { registry, notes } = buildRegistry(
+  const { registry } = buildRegistry(
     refineLlm === undefined ? { store: knowledgeStore } : { store: knowledgeStore, refineLlm },
   )
-  for (const note of notes) console.log(`· ${note}`)
-  console.log(`· 可用工具:${registry.names().join(', ') || '(无)'}\n`)
 
-  // 渲染器要在 Agent 动起来之前挂上:技能匹配会立刻发 skill_load 事件,
-  // 订阅晚一步这条事件就白发(用户看不到「为什么加载了这个技能」)
-  const renderer = createCliRenderer({ verboseTools: args.verbose })
-  const unsubscribe = renderer.subscribe(bus)
+  // CLI 渲染器要在 Agent 动起来之前挂上:技能匹配会立刻发 skill_load 事件
+  const unsubscribe = opts.cli ? createCliRenderer({ verboseTools: opts.verbose }).subscribe(bus) : null
 
   // 知识索引注入 prompt(只注入索引,正文交给 knowledge_search 按需取)
-  // 库是空的时候不注入 —— 否则提示词里多出一段「(空)」,纯噪声
   const knowledgeIndex =
     (await knowledgeStore.listPaperIds()).length > 0 ? await knowledgeStore.index() : undefined
 
@@ -285,33 +297,29 @@ async function cmdAsk(args: Args): Promise<number> {
   const skillStore = createSkillStore(skillsRoot(), { events: bus })
   const skillManifest = await skillStore.manifest()
   const matchedSkill = await skillStore.match(task)
-  if (matchedSkill !== null) {
-    console.log(`· 命中技能「${matchedSkill.name}」(${matchedSkill.skillId}),正文已注入`)
-  } else if (skillManifest.trim() !== '') {
-    console.log(`· 技能清单已注入(${String(skillManifest.split('\n').length)} 项),本次任务未命中`)
-  }
 
   // 追踪与缓存
   const trace = createTraceWriter({ runId })
-  const cache = createFixtureCache({ record: args.record })
+  const cache = createFixtureCache({ record: opts.record })
   const toolContext: Omit<ToolContext, 'signal'> = {
     mode,
     trace,
     cache,
-    // 工具的进度上报以前**没有接线**:onProgress 一直是 undefined,
-    // 任何工具调用它都是静默丢弃。三面板的「阶段性进度」就靠这条,
-    // 不接上,B 的精读/沙箱这类长任务在 UI 上会是一段黑屏。
+    // 进度上报必须接线:三面板的「阶段性进度」就靠这条(设计 §4 progress)
     onProgress: (progress) => bus.emit({ type: 'progress', ...progress }),
   }
 
   const controller = new AbortController()
-  const onSigint = (): void => {
-    console.log('\n收到中断,正在停止…(再按一次强制退出)')
-    controller.abort()
-    process.off('SIGINT', onSigint)
-    process.on('SIGINT', () => process.exit(130))
+  let onSigint: (() => void) | null = null
+  if (opts.cli) {
+    onSigint = (): void => {
+      console.log('\n收到中断,正在停止…(再按一次强制退出)')
+      controller.abort()
+      process.off('SIGINT', onSigint as () => void)
+      process.on('SIGINT', () => process.exit(130))
+    }
+    process.on('SIGINT', onSigint)
   }
-  process.on('SIGINT', onSigint)
 
   const options: LoopOptions = {
     systemPrompt: buildSystemPrompt({
@@ -327,7 +335,7 @@ async function cmdAsk(args: Args): Promise<number> {
     }),
     task,
     toolNames: registry.names(),
-    maxTurns: args.maxTurns ?? LOOP_DEFAULTS.maxTurns,
+    maxTurns: opts.maxTurns ?? LOOP_DEFAULTS.maxTurns,
     maxTotalTokens: Number(process.env.MAX_TOTAL_TOKENS ?? LOOP_DEFAULTS.maxTotalTokens),
     maxConcurrency: Number(process.env.MAX_CONCURRENCY ?? LOOP_DEFAULTS.maxConcurrency),
     signal: controller.signal,
@@ -352,7 +360,8 @@ async function cmdAsk(args: Args): Promise<number> {
     toolCalls: toolCallCount,
   })
 
-  unsubscribe()
+  unsubscribe?.()
+  if (onSigint !== null) process.off('SIGINT', onSigint)
 
   // RunTrace 落进真实 trace 文件,供复盘与回放
   const runTrace: RunTrace = {
@@ -368,9 +377,32 @@ async function cmdAsk(args: Args): Promise<number> {
   }
   trace.write({ kind: 'run_trace', ...runTrace })
   trace.close()
-  console.log(`\n追踪文件:logs/${runId}.jsonl`)
 
-  return isSuccess(result.reason) ? 0 : 1
+  return result
+}
+
+async function cmdAsk(args: Args): Promise<number> {
+  const task = args.positional.join(' ').trim()
+  if (task === '') {
+    console.error('缺少任务。用法:node src/main.ts ask "<任务>"')
+    return 2
+  }
+
+  try {
+    const result = await runAskPipeline(task, {
+      fake: args.fake,
+      replay: args.replay,
+      record: args.record,
+      verbose: args.verbose,
+      maxTurns: args.maxTurns,
+      cli: true,
+    })
+    return isSuccess(result.reason) ? 0 : 1
+  } catch (err) {
+    console.error(errorMessage(err))
+    console.error('\n想先看骨架跑起来?加 --fake:node src/main.ts ask "..." --fake')
+    return 2
+  }
 }
 
 function isSuccess(reason: LoopEndReason): boolean {
@@ -683,6 +715,117 @@ async function cmdNotImplemented(name: string, issue: string): Promise<number> {
   return 2
 }
 
+/**
+ * Web 模式:启动薄壳服务器。
+ *
+ * 本函数是「薄壳约束」的落点 —— 所有业务能力以依赖注入的方式传给
+ * web/server.ts(server 自己只 import node:* 与事件总线,检查器会拦越界)。
+ */
+async function cmdWeb(args: Args): Promise<number> {
+  const knowledgeStore = new LocalMarkdownStore({ root: knowledgeRoot() })
+  const skillStore = createSkillStore(skillsRoot(), { events: bus })
+
+  // ── 任务触发:同一时刻只允许一个运行(409 提示用户)──
+  let busy = false
+  const controller: WebController = {
+    startTask(task) {
+      if (busy) return '上一次运行尚未结束,请稍候'
+      busy = true
+      void runAskPipeline(task, {
+        fake: args.fake,
+        replay: args.replay,
+        record: args.record,
+        verbose: args.verbose,
+        maxTurns: args.maxTurns,
+        cli: false,
+      })
+        .catch(() => undefined)
+        .finally(() => {
+          busy = false
+        })
+      return null
+    },
+  }
+
+  // ── 三面板数据:来自真实存储,不是日志拼凑(AC-F2.4)──
+  const providers: PanelProviders = {
+    async knowledge(): Promise<KnowledgePanelItem[]> {
+      const items: KnowledgePanelItem[] = []
+      for (const paperId of await knowledgeStore.listPaperIds()) {
+        for (const note of await knowledgeStore.listByPaper(paperId)) {
+          items.push({
+            noteId: note.noteId,
+            paperId: note.paperId,
+            page: note.page,
+            kind: note.kind,
+            description: note.description,
+            evidence: { quote: note.evidence.quote, page: note.evidence.page },
+          })
+        }
+      }
+      return items
+    },
+
+    async tools(): Promise<ToolPanelItem[]> {
+      const registry = buildRegistry({ store: knowledgeStore }).registry
+      const schemas = await registry.schemas()
+      const generatedNames = new Set(generatedTools.map((tool) => tool.name))
+      return schemas.map((s): ToolPanelItem => ({
+        name: s.function.name,
+        status: 'active',
+        sourcePaper: generatedNames.has(s.function.name) ? 'B 模块生成' : '手写基础设施',
+        description: s.function.description.slice(0, 160),
+      }))
+    },
+
+    async skills(): Promise<SkillPanelItem[]> {
+      const items = await skillStore.list()
+      return items.map((s): SkillPanelItem => ({
+        skillId: s.skillId,
+        name: s.skillId,
+        status: 'active',
+        whenToUse: s.whenToUse,
+        description: s.description,
+      }))
+    },
+
+    async artifacts(): Promise<ArtifactItem[]> {
+      const files: ArtifactItem[] = []
+      for (const dir of ['out', 'logs']) {
+        try {
+          for (const name of await readdir(dir)) {
+            try {
+              const st = await stat(join(dir, name))
+              if (st.isFile()) files.push({ name: `${dir}/${name}`, sizeBytes: st.size, mtimeMs: st.mtimeMs })
+            } catch {
+              // 单个文件读不到不影响列表
+            }
+          }
+        } catch {
+          // 目录不存在:忽略
+        }
+      }
+      return files.sort((a, b) => b.mtimeMs - a.mtimeMs)
+    },
+  }
+
+  try {
+    await startWebServer({
+      controller,
+      providers,
+      log: (line) => console.log(line),
+    })
+    console.log(`· 模式:${args.replay ? 'replay' : 'live'}${args.fake ? '(fake LLM)' : ''}`)
+    console.log('· 按 Ctrl+C 停止。若 Web 起不来,CLI 照常可用:node src/main.ts ask "<任务>"')
+    // 保持进程存活:server 已监听,挂住即可(收到 SIGINT 由进程默认行为退出)
+    await new Promise<never>(() => {})
+    return 0
+  } catch (err) {
+    console.error(`Web 启动失败,请用 CLI:${errorMessage(err)}`)
+    return 1
+  }
+}
+
 // ─────────────────────────────────────────────────────────────
 // 入口
 // ─────────────────────────────────────────────────────────────
@@ -707,7 +850,7 @@ async function main(): Promise<number> {
     case 'ingest':
       return cmdIngest(args)
     case 'web':
-      return cmdNotImplemented('web', 'Issue #31')
+      return cmdWeb(args)
     case 'help':
     case '-h':
     case '--help':

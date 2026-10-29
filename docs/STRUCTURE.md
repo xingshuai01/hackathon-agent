@@ -111,11 +111,11 @@ hackathon-agent/
 │           └── generate.ts                  知识页聚合 → 技能草案(needs_review)
 │
 ├── web/                                     [骨架] Web 薄壳(不得 import services/)
-│   ├── server.ts                            node:http + SSE + 静态文件
+│   ├── server.ts                            ✅ node:http + SSE + 静态文件 + 端口顺延
 │   └── public/
-│       ├── index.html                       单页,零构建零框架
-│       ├── app.js                           EventSource + DOM 渲染
-│       └── style.css
+│       ├── index.html                       ✅ 单页,零构建零框架
+│       ├── app.js                           ✅ EventSource + DOM 渲染
+│       └── style.css                        ✅ 深色主题,无 CDN
 │
 ├── scripts/
 │   ├── check-rules.mjs                      规则检查器(含模块隔离检查)

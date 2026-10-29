@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>hackathon-agent · 科研 Agent</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span id="status-dot" class="dot connecting" title="连接状态"></span>
+      <span class="brand-name">hackathon-agent</span>
+      <span class="brand-sub">科研 Agent · 论文 → 知识 / 工具 / 技能</span>
+    </div>
+    <form id="ask-form" class="ask-form" autocomplete="off">
+      <input id="ask-input" type="text" placeholder="输入科研任务,回车运行…" />
+      <button id="ask-button" type="submit">运行</button>
+    </form>
+  </header>
+
+  <div id="reconnect-banner" class="reconnect hidden">连接中断,正在重连…</div>
+
+  <main class="layout">
+    <aside class="side-panel">
+      <nav class="tabs">
+        <button class="tab active" data-tab="knowledge">📚 知识库 <span class="count" id="count-knowledge">–</span></button>
+        <button class="tab" data-tab="tools">🔧 工具库 <span class="count" id="count-tools">–</span></button>
+        <button class="tab" data-tab="skills">📋 技能库 <span class="count" id="count-skills">–</span></button>
+      </nav>
+      <div class="panel-head">
+        <span id="panel-title">知识页</span>
+        <button id="refresh-panels" class="ghost" title="刷新面板">↻</button>
+      </div>
+      <div id="panel-content" class="panel-content"></div>
+    </aside>
+
+    <section class="stream-area" id="stream-area">
+      <div id="empty-hint" class="empty-hint">
+        输入任务后,这里会实时显示 Agent 的每一步。<br />
+        左侧三个面板显示已沉淀的资产(知识页 / 工具 / 技能)。
+      </div>
+    </section>
+  </main>
+
+  <footer id="artifacts-bar" class="artifacts hidden"></footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

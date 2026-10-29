@@ -1,0 +1,313 @@
+/* ============================================================
+ * hackathon-agent Web · 深色主题(投影仪友好)
+ * 零依赖、零 CDN:所有资源本地内联。断网也要完整渲染(AC-F4.5)。
+ * 色板见 docs/web-design.md §7。
+ * ============================================================ */
+
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --panel-2: #1c2129;
+  --border: #30363d;
+  --text: #e6edf3;
+  --dim: #8b949e;
+  --green: #3fb950;
+  --purple: #bc8cff;
+  --blue: #58a6ff;
+  --red: #f85149;
+  --yellow: #d29922;
+  --mono: "Cascadia Code", Consolas, "Courier New", monospace;
+  --sans: -apple-system, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── 顶部栏 ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+.brand { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.brand-name { font-weight: 700; font-size: 15px; }
+.brand-sub { color: var(--dim); font-size: 12px; }
+
+.dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  display: inline-block; flex: 0 0 auto;
+}
+.dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.dot.connecting { background: var(--yellow); animation: pulse 1.2s infinite; }
+.dot.offline { background: var(--red); }
+@keyframes pulse { 50% { opacity: 0.35; } }
+
+.ask-form { display: flex; gap: 8px; flex: 1 1 auto; }
+.ask-form input {
+  flex: 1 1 auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 14px;
+  outline: none;
+}
+.ask-form input:focus { border-color: var(--blue); }
+.ask-form button {
+  background: var(--blue);
+  color: #0d1117;
+  font-weight: 700;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 20px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.ask-form button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── 重连横幅 ── */
+.reconnect {
+  background: rgba(210, 153, 34, 0.15);
+  color: var(--yellow);
+  border-bottom: 1px solid var(--yellow);
+  padding: 6px 16px;
+  font-size: 13px;
+}
+.hidden { display: none !important; }
+
+/* ── 主布局 ── */
+.layout { display: flex; flex: 1 1 auto; overflow: hidden; }
+
+/* ── 左侧面板 ── */
+.side-panel {
+  width: 340px;
+  flex: 0 0 auto;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.tabs { display: flex; border-bottom: 1px solid var(--border); }
+.tab {
+  flex: 1 1 auto;
+  background: none;
+  border: none;
+  color: var(--dim);
+  padding: 10px 6px;
+  font-size: 13px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.tab.active { color: var(--text); border-bottom-color: var(--blue); }
+.count {
+  background: var(--panel-2);
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 11px;
+  color: var(--dim);
+  margin-left: 2px;
+}
+.panel-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 12px;
+  color: var(--dim);
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.ghost {
+  background: none; border: none; color: var(--dim);
+  cursor: pointer; font-size: 14px;
+}
+.ghost:hover { color: var(--text); }
+
+.panel-content { flex: 1 1 auto; overflow-y: auto; padding: 8px; }
+
+/* 卡片 */
+.card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.card:hover { border-color: var(--blue); }
+.card.open { border-color: var(--blue); }
+
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+.badge.kind-claim { background: rgba(88,166,255,.15); color: var(--blue); }
+.badge.kind-result { background: rgba(63,185,80,.15); color: var(--green); }
+.badge.kind-method { background: rgba(188,140,255,.15); color: var(--purple); }
+.badge.kind-limitation { background: rgba(248,81,73,.15); color: var(--red); }
+.badge.kind-definition { background: rgba(210,153,34,.15); color: var(--yellow); }
+.badge.st-active { background: rgba(63,185,80,.15); color: var(--green); }
+.badge.st-draft, .badge.st-needs_review { background: rgba(210,153,34,.15); color: var(--yellow); }
+.badge.st-incomplete { background: rgba(248,81,73,.15); color: var(--red); }
+
+.card-desc { font-size: 13px; line-height: 1.45; margin-top: 4px; }
+.card-meta { color: var(--dim); font-size: 12px; margin-top: 6px; font-family: var(--mono); }
+.card-evidence {
+  display: none;
+  margin-top: 8px;
+  border-left: 2px solid var(--green);
+  padding-left: 8px;
+  color: var(--dim);
+  font-size: 12px;
+  font-family: var(--mono);
+  line-height: 1.5;
+}
+.card.open .card-evidence { display: block; }
+
+.panel-empty { color: var(--dim); font-size: 13px; text-align: center; padding: 24px 8px; }
+
+/* ── 右侧过程流 ── */
+.stream-area {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 16px 20px 40px;
+}
+.empty-hint {
+  color: var(--dim);
+  text-align: center;
+  margin-top: 15vh;
+  line-height: 1.8;
+  font-size: 14px;
+}
+
+.run-block { margin-bottom: 28px; }
+
+.msg-user {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+.msg-user::before { content: "▸ 你 · "; color: var(--dim); font-size: 12px; }
+
+.msg-agent { font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.msg-agent.typing::after { content: "▌"; color: var(--blue); animation: pulse 1s infinite; }
+
+/* 工具行 */
+.tool-line {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-family: var(--mono);
+  font-size: 13px;
+  margin: 8px 0 4px 20px;
+}
+.tool-line .tool-name { color: var(--purple); font-weight: 700; }
+.tool-line .tool-args { color: var(--dim); word-break: break-all; }
+.tool-line .tool-result { color: var(--dim); font-size: 12px; }
+.tool-line.ok .tool-result { color: var(--green); }
+.tool-line.fail .tool-result { color: var(--red); }
+.spinner { display: inline-block; width: 10px; height: 10px; border: 2px solid var(--dim); border-top-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* chips 与 banner */
+.chip {
+  display: inline-block;
+  background: rgba(63,185,80,.12);
+  border: 1px solid rgba(63,185,80,.4);
+  border-radius: 4px;
+  color: var(--green);
+  font-size: 12px;
+  font-family: var(--mono);
+  padding: 2px 8px;
+  margin: 3px 6px 3px 0;
+  cursor: pointer;
+}
+.chip:hover { background: rgba(63,185,80,.22); }
+
+.banner {
+  background: rgba(88,166,255,.1);
+  border-left: 3px solid var(--blue);
+  padding: 8px 12px;
+  margin: 8px 0;
+  font-size: 13px;
+  border-radius: 0 6px 6px 0;
+}
+.banner .reason { color: var(--dim); }
+
+.err-line {
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 13px;
+  margin: 6px 0 4px 20px;
+}
+.progress-line {
+  margin: 6px 0 4px 20px;
+  font-size: 12px;
+  color: var(--dim);
+  font-family: var(--mono);
+}
+.progress-line .bar {
+  display: inline-block;
+  height: 4px;
+  background: var(--blue);
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-left: 8px;
+}
+
+/* 汇总 footer */
+.run-footer {
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 12px;
+  border-top: 1px dashed var(--border);
+  margin-top: 14px;
+  padding-top: 8px;
+}
+.run-footer.completed { color: var(--green); }
+.run-footer.failed { color: var(--red); }
+
+/* ── 产物栏 ── */
+.artifacts {
+  flex: 0 0 auto;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  padding: 8px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.artifacts .label { color: var(--dim); }
+.artifacts a { color: var(--blue); text-decoration: none; font-family: var(--mono); }
+.artifacts a:hover { text-decoration: underline; }
+
+/* ── 窄屏 ── */
+@media (max-width: 860px) {
+  .side-panel { width: 100%; height: 40vh; border-right: none; border-bottom: 1px solid var(--border); }
+  .layout { flex-direction: column; }
+  .brand-sub { display: none; }
+}
