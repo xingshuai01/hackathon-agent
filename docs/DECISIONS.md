@@ -255,6 +255,12 @@
 - **代价**:新增约 300 行(客户端 + SSE 解析 + replay 支持),约 2 小时
 - **日期**:2026-10-28
 - **影响**:SRS `FR-G`;SDD §12.5;`.env.example` 新增 `SCIENCEPAL_*`
+- **已落地(2026-10-31)**:
+  - 平台自定义 Agent **「论文精读官 (Paper Close Reader)」** 已建:`agent_id = ae5aaadf-41c2-41e1-9b33-dbe5b8d6226e`
+  - 配置在 `agents/paper-close-reader.json`;创建脚本 `scripts/sp-create-agent.mjs`
+  - 精读产出**只给 quote、不给页码**(实测自报页码 0/20 正确),页码由本地 `attachPageByQuote` 反查
+  - 验证 run(thread 链接):`https://sciencepal.ai/projects/-/thread/8c01b81f-56b9-4905-bdae-00a203757cbb`
+  - ⚠️ 平台每次 run 固定开销 ~2.5 万 token(系统提示词 + tooling),20k 预算会 `asked`(预算耗尽),输出已完整
 
 
 #### DEC-033 · **不删自研文件**,坚持「自研 loop + SciencePal 作为工具」
