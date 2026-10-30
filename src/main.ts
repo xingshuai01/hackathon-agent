@@ -34,6 +34,7 @@ import { createSciencePalTool, sciencePalConfigFromEnv } from './tools/sciencepa
 import { formatDoctorReport, runDoctor } from './services/toolsynth/doctor.ts'
 import { createDeepSeekClient, configFromEnv } from './services/llm/deepseek.ts'
 import { LlmFatalError, errorMessage, type LlmClient } from './services/llm/types.ts'
+import { createReplayLlmClient } from './services/llm/replay.ts'
 import { createTraceWriter } from './services/trace/writer.ts'
 import { createFixtureCache } from './services/cache/fixtures.ts'
 import { parsePdfFile } from './services/paper/parse.ts'
@@ -248,6 +249,24 @@ function buildRegistry(
 // ─────────────────────────────────────────────────────────────
 
 /**
+ * 回放模式下内层客户端的桩。它永远不该被调用(回放只读 fixtures);
+ * 一旦被调用说明对应的 fixture 缺失或 key 没对上,应当立刻、响亮地失败。
+ */
+function unreachableLlm(): LlmClient {
+  const boom = (): never => {
+    throw new LlmFatalError('回放模式下内层 LLM 不应被调用(fixture 缺失才会走到这里)')
+  }
+  return {
+    async turn(): Promise<never> {
+      return boom()
+    },
+    async sideQuery(): Promise<never> {
+      return boom()
+    },
+  }
+}
+
+/**
  * ask 管线的共用实现:CLI 的 `ask` 命令与 Web 的 `/api/ask` 都走这里。
  * Web 模式下不挂 CLI 渲染器(事件经总线 → SSE 出去,不需要打到服务器终端)。
  */
@@ -265,12 +284,19 @@ async function runAskPipeline(
 ): Promise<LoopResult> {
   const runId = randomUUID()
   const mode = opts.replay ? 'replay' : 'live'
+  const cache = createFixtureCache({
+    dir: process.env['FIXTURES_DIR'] ?? './fixtures',
+    record: opts.record,
+  })
 
   // LLM
   let llm: LlmClient
   if (opts.fake) {
     llm = createFakeLlm(demoScript())
     if (opts.cli) console.log('提示:--fake 模式,使用剧本化假 LLM,不消耗 API 额度\n')
+  } else if (opts.replay) {
+    // 回放离线:内层客户端永不调用,放一个会明确报错的桩(走到它说明 fixture 缺失)
+    llm = unreachableLlm()
   } else {
     try {
       llm = createDeepSeekClient(configFromEnv())
@@ -280,8 +306,13 @@ async function runAskPipeline(
     }
   }
 
-  // replay 与 fake 下都不走 LLM 精筛:前者禁止联网,后者没有真实模型
-  const refineLlm = opts.fake || opts.replay ? undefined : llm
+  // #39:record 录制 LLM 响应到 fixtures,replay 离线回放(零网络)
+  if (opts.record || opts.replay) {
+    llm = createReplayLlmClient({ inner: llm, cache, mode, record: opts.record })
+  }
+
+  // 精筛:fake 没有真实模型;replay 走包装器回放 sideQuery(不联网);live 用真实模型
+  const refineLlm = opts.fake ? undefined : llm
   const knowledgeStore = new LocalMarkdownStore({ root: knowledgeRoot() })
   const { registry } = buildRegistry(
     refineLlm === undefined ? { store: knowledgeStore } : { store: knowledgeStore, refineLlm },
@@ -299,9 +330,8 @@ async function runAskPipeline(
   const skillManifest = await skillStore.manifest()
   const matchedSkill = await skillStore.match(task)
 
-  // 追踪与缓存
+  // 追踪
   const trace = createTraceWriter({ runId })
-  const cache = createFixtureCache({ record: opts.record })
   const toolContext: Omit<ToolContext, 'signal'> = {
     mode,
     trace,
@@ -840,7 +870,10 @@ async function main(): Promise<number> {
     console.log('· 未找到 .env(可复制 .env.example 后填写)')
   }
 
-  const args = parseArgs(process.argv.slice(2))
+  const parsed = parseArgs(process.argv.slice(2))
+  // DEMO_MODE 与 --replay 等价:文档/验收标准(AC-E1.2)用环境变量,CLI 用 flag。
+  // 两者取其一即可;显式 --replay 优先于 env(env 只是默认值)。
+  const args: Args = { ...parsed, replay: parsed.replay || process.env['DEMO_MODE'] === 'replay' }
 
   switch (args.command) {
     case 'ask':
