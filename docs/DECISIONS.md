@@ -260,7 +260,9 @@
   - 配置在 `agents/paper-close-reader.json`;创建脚本 `scripts/sp-create-agent.mjs`
   - 精读产出**只给 quote、不给页码**(实测自报页码 0/20 正确),页码由本地 `attachPageByQuote` 反查
   - 验证 run(thread 链接):`https://sciencepal.ai/projects/-/thread/8c01b81f-56b9-4905-bdae-00a203757cbb`
+  - **可运行作品链接(提交清单②)**:Agent 链接 `https://sciencepal.ai/agents/ae5aaadf-41c2-41e1-9b33-dbe5b8d6226e`(能打开直接对话演示);thread 链接作备份
   - ⚠️ 平台每次 run 固定开销 ~2.5 万 token(系统提示词 + tooling),20k 预算会 `asked`(预算耗尽),输出已完整
+  - ⚠️ 公开/发布:API key 白名单不含 `/publish`(403),网页「分享」只发提示词到邮箱 —— 普通账号无 marketplace 公开入口,提交时以 Agent 链接 + `agent_id` + 主循环 `sciencepal_query` 调用链为准
 
 
 #### DEC-033 · **不删自研文件**,坚持「自研 loop + SciencePal 作为工具」
