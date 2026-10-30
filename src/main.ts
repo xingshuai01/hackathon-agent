@@ -47,6 +47,7 @@ import { generateSkillDraft } from './services/skills/generate.ts'
 import { renderSkillForPrompt } from './services/skills/inject.ts'
 import {
   startWebServer,
+  BusyError,
   type ArtifactItem,
   type IngestResult,
   type IngestSkillItem,
@@ -844,7 +845,11 @@ async function cmdWeb(args: Args): Promise<number> {
     },
 
     ingestPdf(bytes, filename) {
-      return ingestPdfFromBytes(bytes, filename)
+      if (busy) throw new BusyError()
+      busy = true
+      return ingestPdfFromBytes(bytes, filename).finally(() => {
+        busy = false
+      })
     },
   }
 
@@ -871,12 +876,16 @@ async function cmdWeb(args: Args): Promise<number> {
       const registry = buildRegistry({ store: knowledgeStore }).registry
       const schemas = await registry.schemas()
       const generatedNames = new Set(generatedTools.map((tool) => tool.name))
-      return schemas.map((s): ToolPanelItem => ({
-        name: s.function.name,
-        status: 'active',
-        sourcePaper: generatedNames.has(s.function.name) ? 'B 模块生成' : '手写基础设施',
-        description: s.function.description.slice(0, 160),
-      }))
+      // B 工具库 = 「论文方法 → 可执行工具」,只列 B 模块生成的工具;
+      // 基础设施(echo/now/calc/knowledge_search/sciencepal_query)不属于 B 库,不在此展示。
+      return schemas
+        .filter((s) => generatedNames.has(s.function.name))
+        .map((s): ToolPanelItem => ({
+          name: s.function.name,
+          status: 'active',
+          sourcePaper: 'B 模块生成',
+          description: s.function.description.slice(0, 160),
+        }))
     },
 
     async skills(): Promise<SkillPanelItem[]> {

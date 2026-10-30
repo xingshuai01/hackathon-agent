@@ -56,6 +56,17 @@ export interface IngestResult {
   readonly tools: readonly string[]
 }
 
+/**
+ * 单任务互斥:上一次运行尚未结束时,controller 抛这个,server 回 409。
+ * 定义在 web 侧是因为 main.ts 依赖注入时 import 这里(方向不变,无环)。
+ */
+export class BusyError extends Error {
+  constructor(message = '上一次运行尚未结束,请稍候') {
+    super(message)
+    this.name = 'BusyError'
+  }
+}
+
 export interface WebController {
   /**
    * 启动一次 ask 任务。**同步返回**:
@@ -265,6 +276,10 @@ export async function startWebServer(options: WebServerOptions): Promise<WebServ
         const result = await options.controller.ingestPdf(bytes, filename)
         sendJson(res, 200, { result })
       } catch (err) {
+        if (err instanceof BusyError) {
+          sendJson(res, 409, { error: err.message })
+          return
+        }
         const message = err instanceof Error ? err.message : String(err)
         sendJson(res, 500, { error: message })
       }
