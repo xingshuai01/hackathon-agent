@@ -37,7 +37,7 @@ import { LlmFatalError, errorMessage, type LlmClient } from './services/llm/type
 import { createReplayLlmClient } from './services/llm/replay.ts'
 import { createTraceWriter } from './services/trace/writer.ts'
 import { createFixtureCache } from './services/cache/fixtures.ts'
-import { parsePdfFile } from './services/paper/parse.ts'
+import { parsePdfBytes, parsePdfFile } from './services/paper/parse.ts'
 import { ingestPaper } from './services/knowledge/ingest.ts'
 import { writeIndexFile } from './services/knowledge/indexFile.ts'
 import { LocalMarkdownStore } from './services/knowledge/localMarkdown.ts'
@@ -48,6 +48,8 @@ import { renderSkillForPrompt } from './services/skills/inject.ts'
 import {
   startWebServer,
   type ArtifactItem,
+  type IngestResult,
+  type IngestSkillItem,
   type KnowledgePanelItem,
   type PanelProviders,
   type SkillPanelItem,
@@ -477,8 +479,8 @@ function sanitizeSkillId(paperId: string): string {
 async function draftSkillFromPaper(
   doc: PaperDoc,
   notes: readonly AtomicNote[],
-): Promise<void> {
-  if (notes.length === 0) return
+): Promise<IngestSkillItem | null> {
+  if (notes.length === 0) return null
 
   const title = doc.title.trim() === '' ? doc.paperId : doc.title.trim()
   const brief = title.length > 60 ? `${title.slice(0, 59)}…` : title
@@ -498,6 +500,69 @@ async function draftSkillFromPaper(
   const file = await writeSkillDraft(skillDraftsRoot(), outcome)
   console.log(`  · 技能草案:${file.path}(待补 ${String(file.warnings.length)} 项)`)
   for (const warning of file.warnings) console.log(`      - ${warning}`)
+
+  return { skillId: outcome.skill.skillId, name: outcome.skill.name, warnings: [...file.warnings] }
+}
+
+/**
+ * Web 端拖拽上传 PDF → 解析入库 → 按三库归类的结构化结果(给前端弹框)。
+ * B 工具库由方法抽取流程生成,这里只回传当前已就绪的工具名。
+ */
+async function ingestPdfFromBytes(bytes: Uint8Array, filename: string): Promise<IngestResult> {
+  const store = new LocalMarkdownStore({ root: knowledgeRoot() })
+
+  // pdfjs 只收纯 Uint8Array,拒绝 Buffer(Buffer 虽是 Uint8Array 子类但过不了它检查)。
+  // 与 parsePdfFile 里 `new Uint8Array(readFile(...))` 的做法一致:先拷贝成纯 Uint8Array。
+  const plain = new Uint8Array(bytes)
+  const parsed = await parsePdfBytes(plain, { titleHint: filename })
+  const result = await ingestPaper(
+    store,
+    { doc: parsed.doc, pageLines: parsed.pageLines },
+    { indexRoot: knowledgeRoot() },
+  )
+
+  const paperId = parsed.doc.paperId
+  const title = parsed.doc.title.trim() === '' ? paperId : parsed.doc.title.trim()
+
+  let knowledge: IngestResult['knowledge'] = []
+  let skill: IngestSkillItem | null = null
+  let message = ''
+
+  switch (result.status) {
+    case 'stored':
+      knowledge = result.notes.map((note) => ({
+        noteId: note.noteId,
+        kind: note.kind,
+        description: note.description,
+        page: note.page,
+        quote: note.evidence.quote,
+      }))
+      skill = await draftSkillFromPaper(parsed.doc, result.notes)
+      message = `已抽出 ${result.notes.length} 条原子知识页`
+      break
+    case 'skipped':
+      message = result.message
+      break
+    case 'quarantined':
+      message = result.message
+      break
+    case 'empty':
+      message = result.message
+      break
+    case 'failed':
+      message = result.message
+      break
+  }
+
+  return {
+    paperId,
+    title,
+    status: result.status,
+    message,
+    knowledge,
+    skill,
+    tools: generatedTools.map((tool) => tool.name),
+  }
 }
 
 async function cmdIngest(args: Args): Promise<number> {
@@ -776,6 +841,10 @@ async function cmdWeb(args: Args): Promise<number> {
           busy = false
         })
       return null
+    },
+
+    ingestPdf(bytes, filename) {
+      return ingestPdfFromBytes(bytes, filename)
     },
   }
 

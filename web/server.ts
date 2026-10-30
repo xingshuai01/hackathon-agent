@@ -28,6 +28,34 @@ import { bus, toSseFrame, type AgentEvent } from '../src/ui/events.ts'
 // 1. 注入接口(形状在这里定义,实现全在 main.ts)
 // ─────────────────────────────────────────────────────────────
 
+/** 一次 PDF 解析产出的、按三库归类的资产(给前端弹框展示) */
+export interface IngestKnowledgeItem {
+  readonly noteId: string
+  readonly kind: string
+  readonly description: string
+  readonly page: number
+  readonly quote: string
+}
+
+export interface IngestSkillItem {
+  readonly skillId: string
+  readonly name: string
+  readonly warnings: readonly string[]
+}
+
+export interface IngestResult {
+  readonly paperId: string
+  readonly title: string
+  readonly status: 'stored' | 'skipped' | 'quarantined' | 'empty' | 'failed'
+  readonly message: string
+  /** A 知识库:本次抽出的原子知识页 */
+  readonly knowledge: readonly IngestKnowledgeItem[]
+  /** C 技能库:本次生成的技能草案(没抽出知识页时为 null) */
+  readonly skill: IngestSkillItem | null
+  /** B 工具库:当前已就绪的生成工具名(方法抽取是独立流程,这里只报现状) */
+  readonly tools: readonly string[]
+}
+
 export interface WebController {
   /**
    * 启动一次 ask 任务。**同步返回**:
@@ -35,6 +63,12 @@ export interface WebController {
    * - 返回 string = 拒绝原因(如「上一次运行尚未结束」),由前端提示用户
    */
   startTask(task: string): string | null
+
+  /**
+   * 解析一个 PDF 并入库(知识库 A + 技能草案 C),返回按三库归类的结构化结果。
+   * B 工具库由方法抽取流程生成,这里只回传当前已就绪的工具名。
+   */
+  ingestPdf(bytes: Uint8Array, filename: string): Promise<IngestResult>
 }
 
 export interface KnowledgePanelItem {
@@ -143,6 +177,20 @@ function readJsonBody(req: IncomingMessage): Promise<unknown> {
   })
 }
 
+/** 读原始二进制 body(PDF 上传用)。超过上限返回 null,避免内存被打爆 */
+function readRawBody(req: IncomingMessage, maxBytes: number): Promise<Uint8Array | null> {
+  return new Promise((resolveBody) => {
+    const chunks: Buffer[] = []
+    let total = 0
+    req.on('data', (chunk: Buffer) => {
+      total += chunk.length
+      if (total <= maxBytes) chunks.push(chunk)
+    })
+    req.on('end', () => (total > maxBytes ? resolveBody(null) : resolveBody(Buffer.concat(chunks))))
+    req.on('error', () => resolveBody(null))
+  })
+}
+
 function sendJson(res: ServerResponse, status: number, payload: unknown): void {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' })
   res.end(JSON.stringify(payload))
@@ -199,6 +247,27 @@ export async function startWebServer(options: WebServerOptions): Promise<WebServ
         return
       }
       sendJson(res, 202, { accepted: true })
+      return
+    }
+
+    // ── PDF 上传解析:body 是原始 PDF 字节,文件名走 query 或 header ──
+    if (path === '/api/ingest' && req.method === 'POST') {
+      const bytes = await readRawBody(req, 50 * 1024 * 1024)
+      if (bytes === null || bytes.byteLength === 0) {
+        sendJson(res, 400, { error: 'PDF 为空或超过 50MB 上限' })
+        return
+      }
+      const filename =
+        url.searchParams.get('filename') ??
+        (req.headers['x-filename'] as string | undefined) ??
+        'upload.pdf'
+      try {
+        const result = await options.controller.ingestPdf(bytes, filename)
+        sendJson(res, 200, { result })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        sendJson(res, 500, { error: message })
+      }
       return
     }
 

@@ -24,6 +24,26 @@
   const artifactsBar = $('artifacts-bar')
   const counts = { knowledge: $('count-knowledge'), tools: $('count-tools'), skills: $('count-skills') }
 
+  // 解析流水线元素
+  const dropzone = $('dropzone')
+  const pdfFile = $('pdf-file')
+  const pickPdf = $('pick-pdf')
+  const dzText = dropzone.querySelector('.dz-text')
+  const dzFile = $('dz-file')
+  const dzFilename = $('dz-filename')
+  const dzClear = $('dz-clear')
+  const dzLoading = $('dz-loading')
+  const parseButton = $('parse-button')
+  const wfParse = document.querySelector('.wf-parse')
+  const wfCounts = { knowledge: $('wf-count-knowledge'), tools: $('wf-count-tools'), skills: $('wf-count-skills') }
+  const modalBackdrop = $('modal-backdrop')
+  const modalTitle = $('modal-title')
+  const modalBody = $('modal-body')
+  const modalClose = $('modal-close')
+
+  /** 已选中的待解析 PDF */
+  let pendingPdf = null
+
   /** 当前活跃的运行块 */
   let currentRun = null
   /** 每个运行块里「未完成的工具行」,key = tool id */
@@ -278,6 +298,9 @@
       counts.knowledge.textContent = panelCache.knowledge.length
       counts.tools.textContent = panelCache.tools.length
       counts.skills.textContent = panelCache.skills.length
+      wfCounts.knowledge.textContent = panelCache.knowledge.length
+      wfCounts.tools.textContent = panelCache.tools.length
+      wfCounts.skills.textContent = panelCache.skills.length
       renderActivePanel()
     } catch { /* 面板读取失败不崩页面 */ }
   }
@@ -396,7 +419,183 @@
   $('refresh-panels').addEventListener('click', refreshAllPanels)
 
   // ─────────────────────────────────────────────
-  // 7. 启动
+  // 7. 论文解析流水线(拖拽 PDF → 解析 → 三库)
+  // ─────────────────────────────────────────────
+
+  function openModal(title, buildBody) {
+    modalTitle.textContent = title
+    modalBody.textContent = ''
+    modalBody.appendChild(buildBody())
+    modalBackdrop.classList.remove('hidden')
+  }
+  function closeModal() { modalBackdrop.classList.add('hidden') }
+  modalClose.addEventListener('click', closeModal)
+  modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal() })
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal() })
+
+  function setPendingPdf(file) {
+    pendingPdf = file
+    dzText.classList.add('hidden')
+    dzFile.classList.remove('hidden')
+    dzFilename.textContent = file.name
+    dropzone.classList.add('has-file')
+  }
+  function resetDropzone() {
+    pendingPdf = null
+    pdfFile.value = ''
+    dzText.classList.remove('hidden')
+    dzFile.classList.add('hidden')
+    dzLoading.classList.add('hidden')
+    parseButton.disabled = false
+    dropzone.classList.remove('has-file')
+  }
+
+  pickPdf.addEventListener('click', () => pdfFile.click())
+  pdfFile.addEventListener('change', () => {
+    const file = pdfFile.files && pdfFile.files[0]
+    if (file) setPendingPdf(file)
+  })
+  dzClear.addEventListener('click', resetDropzone)
+
+  dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover') })
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'))
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault()
+    dropzone.classList.remove('dragover')
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]
+    if (file && file.name.toLowerCase().endsWith('.pdf')) setPendingPdf(file)
+    else alert('只支持 PDF 文件')
+  })
+
+  function flashWorkflow() {
+    document.querySelectorAll('.wf-lib').forEach((node, i) => {
+      node.classList.remove('flash')
+      void node.offsetWidth
+      node.style.animationDelay = (i * 120) + 'ms'
+      node.classList.add('flash')
+    })
+  }
+
+  parseButton.addEventListener('click', async () => {
+    if (!pendingPdf) return
+    parseButton.disabled = true
+    dzLoading.classList.remove('hidden')
+    wfParse.classList.add('working')
+    try {
+      const bytes = new Uint8Array(await pendingPdf.arrayBuffer())
+      const res = await fetch('/api/ingest?filename=' + encodeURIComponent(pendingPdf.name), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/pdf' },
+        body: bytes,
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert('解析失败:' + (body.error || ('HTTP ' + res.status)))
+        return
+      }
+      openParseResultModal(body.result)
+      flashWorkflow()
+      await refreshAllPanels()
+      resetDropzone()
+    } catch (err) {
+      alert('解析失败:' + (err && err.message ? err.message : err))
+    } finally {
+      parseButton.disabled = false
+      dzLoading.classList.add('hidden')
+      wfParse.classList.remove('working')
+    }
+  })
+
+  function openParseResultModal(result) {
+    openModal('📄 解析结果', () => {
+      const wrap = el('div')
+      const head = el('div', 'result-head')
+      head.appendChild(el('div', 'result-title', result.title))
+      const meta = el('div', 'result-meta')
+      meta.appendChild(document.createTextNode(result.paperId + ' · ' + result.message))
+      meta.appendChild(el('span', 'result-status ' + result.status, result.status))
+      head.appendChild(meta)
+      wrap.appendChild(head)
+
+      const flow = el('div', 'result-flow')
+      flow.appendChild(el('span', 'rf-node', '📄 PDF'))
+      flow.appendChild(el('span', 'rf-arrow', '→'))
+      flow.appendChild(el('span', 'rf-node', '⚙ 解析'))
+      flow.appendChild(el('span', 'rf-arrow', '→'))
+      flow.appendChild(el('span', 'rf-node hot', '📚 知识 ' + result.knowledge.length))
+      flow.appendChild(el('span', 'rf-node hot', '🔧 工具 ' + result.tools.length))
+      flow.appendChild(el('span', 'rf-node hot', '📋 技能 ' + (result.skill ? 1 : 0)))
+      wrap.appendChild(flow)
+
+      // A 知识库
+      const a = el('div', 'result-block')
+      a.appendChild(el('h4', null, '📚 知识库(A) · 本次抽取'))
+      a.appendChild(el('span', 'rb-count', result.knowledge.length + ' 条原子知识页'))
+      if (result.knowledge.length === 0) {
+        a.appendChild(el('div', 'lib-empty', '未抽出知识页(可能解析率过低被隔离)'))
+      } else {
+        for (const note of result.knowledge) {
+          const item = el('div', 'note-item')
+          item.appendChild(el('div', 'ni-desc', '[' + note.kind + '] p.' + note.page + ' · ' + note.description))
+          item.appendChild(el('div', 'ni-quote', '▶ ' + note.quote))
+          a.appendChild(item)
+        }
+      }
+      wrap.appendChild(a)
+
+      // B 工具库
+      const b = el('div', 'result-block')
+      b.appendChild(el('h4', null, '🔧 工具库(B) · 已就绪'))
+      b.appendChild(el('span', 'rb-count', result.tools.length + ' 个工具(论文方法 → 可执行工具)'))
+      if (result.tools.length > 0) {
+        const chips = el('div', 'tool-chips')
+        for (const name of result.tools) chips.appendChild(el('span', 'tchip', name))
+        b.appendChild(chips)
+      } else {
+        b.appendChild(el('div', 'lib-empty', '尚无生成工具'))
+      }
+      wrap.appendChild(b)
+
+      // C 技能库
+      const c = el('div', 'result-block')
+      c.appendChild(el('h4', null, '📋 技能库(C) · 本次草案'))
+      if (result.skill) {
+        const box = el('div', 'skill-box')
+        box.appendChild(el('div', 'sk-name', result.skill.name))
+        box.appendChild(el('div', 'sk-id', result.skill.skillId))
+        if (result.skill.warnings.length > 0) {
+          box.appendChild(el('div', 'sk-warn', '待人工补齐 ' + result.skill.warnings.length + ' 项(见草案头注释)'))
+        }
+        c.appendChild(box)
+      } else {
+        c.appendChild(el('div', 'lib-empty', '未生成技能草案'))
+      }
+      wrap.appendChild(c)
+
+      return wrap
+    })
+  }
+
+  document.querySelectorAll('.wf-lib').forEach((btn) => {
+    btn.addEventListener('click', () => openLibraryModal(btn.dataset.lib))
+  })
+
+  function openLibraryModal(lib) {
+    const meta = PANEL_META[lib]
+    const items = panelCache[lib] || []
+    openModal(meta.title + ' · 全览', () => {
+      const grid = el('div', 'lib-grid')
+      if (items.length === 0) {
+        grid.appendChild(el('div', 'lib-empty', '暂无数据。解析论文后会沉淀到这里。'))
+      } else {
+        for (const item of items) grid.appendChild(renderCard(item))
+      }
+      return grid
+    })
+  }
+
+  // ─────────────────────────────────────────────
+  // 8. 启动
   // ─────────────────────────────────────────────
 
   connect()

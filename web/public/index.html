@@ -21,6 +21,43 @@
 
   <div id="reconnect-banner" class="reconnect hidden">连接中断,正在重连…</div>
 
+  <!-- ── 论文解析流水线:拖拽上传 + 可视化工作流 + 三库按钮 ── -->
+  <section class="pipeline">
+    <div id="dropzone" class="dropzone">
+      <div class="dz-icon">📄</div>
+      <div class="dz-text">
+        <strong>拖拽论文 PDF 到这里</strong>
+        <span class="dz-or">或</span>
+        <button id="pick-pdf" class="dz-pick" type="button">选择文件</button>
+      </div>
+      <input id="pdf-file" type="file" accept="application/pdf,.pdf" hidden />
+      <div id="dz-file" class="dz-file hidden">
+        <span id="dz-filename" class="dz-name"></span>
+        <button id="parse-button" class="parse-btn" type="button">▶ 开始解析</button>
+        <button id="dz-clear" class="ghost" type="button" title="移除">✕</button>
+      </div>
+      <div id="dz-loading" class="dz-loading hidden">
+        <span class="spinner"></span><span>解析中,请稍候…</span>
+      </div>
+    </div>
+
+    <div id="workflow" class="workflow">
+      <div class="wf-node wf-pdf">📄 PDF</div>
+      <div class="wf-arrow">→</div>
+      <div class="wf-node wf-parse">⚙ 解析</div>
+      <div class="wf-arrow">→</div>
+      <button class="wf-node wf-lib" data-lib="knowledge" type="button">
+        📚 知识库<span class="wf-count" id="wf-count-knowledge">–</span>
+      </button>
+      <button class="wf-node wf-lib" data-lib="tools" type="button">
+        🔧 工具库<span class="wf-count" id="wf-count-tools">–</span>
+      </button>
+      <button class="wf-node wf-lib" data-lib="skills" type="button">
+        📋 技能库<span class="wf-count" id="wf-count-skills">–</span>
+      </button>
+    </div>
+  </section>
+
   <main class="layout">
     <aside class="side-panel">
       <nav class="tabs">
@@ -38,12 +75,23 @@
     <section class="stream-area" id="stream-area">
       <div id="empty-hint" class="empty-hint">
         输入任务后,这里会实时显示 Agent 的每一步。<br />
-        左侧三个面板显示已沉淀的资产(知识页 / 工具 / 技能)。
+        拖拽 PDF 到上方即可解析入库;左侧三个面板展示已沉淀的资产(知识页 / 工具 / 技能)。
       </div>
     </section>
   </main>
 
   <footer id="artifacts-bar" class="artifacts hidden"></footer>
+
+  <!-- ── 通用弹框:解析结果 & 三库全览 ── -->
+  <div id="modal-backdrop" class="modal-backdrop hidden">
+    <div id="modal" class="modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <span id="modal-title"></span>
+        <button id="modal-close" class="ghost" type="button">✕</button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+    </div>
+  </div>
 
   <script src="/app.js"></script>
 </body>
