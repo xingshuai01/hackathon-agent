@@ -30,6 +30,15 @@ export interface L1Impl {
   readonly smokeInput: string
   /** smoke test 期望 summary 包含的子串(用于 assert.match) */
   readonly smokeExpect: string
+  /**
+   * 可选:跨字段校验源码。接收 `input`,返回 `{ ok: true }` 或 `{ ok: false, message }`。
+   *
+   * 为什么需要:zod 的字段级校验(.min/.int)管不了「successes <= total」这类
+   * **跨字段**语义约束 —— 缺了它,`success_rate(11,10)` 会返回 110%(实测踩过,
+   * 这正是风险登记册 R-1 说的"跑通了但结果错")。
+   * 渲染进生成工具的 `validateInput`(在 call 之前执行,零 I/O)。
+   */
+  readonly validateSource?: string
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -76,6 +85,8 @@ export const L1_IMPLS: readonly L1Impl[] = [
     )`,
     smokeInput: `{ majorityCount: 2, total: 5 }`,
     smokeExpect: `应回退到 ReAct`,
+    validateSource: `if (input.majorityCount > input.total) return { ok: false, message: 'majorityCount 不能大于 total:多数票数不可能超过总采样数' }
+    return { ok: true }`,
   },
   {
     // 证据:p5「A) ReAct → CoT-SC: when ReAct fails to return an answer within given
@@ -114,6 +125,8 @@ export const L1_IMPLS: readonly L1Impl[] = [
     )`,
     smokeInput: `{ requiredCount: 4, matchedCount: 3 }`,
     smokeExpect: `score=0.75`,
+    validateSource: `if (input.matchedCount > input.requiredCount) return { ok: false, message: 'matchedCount 不能大于 requiredCount:匹配数不可能超过要求数' }
+    return { ok: true }`,
   },
   {
     // 证据:p7「Following Shridhar et al. (2020b), we evaluate on 134 unseen
@@ -130,6 +143,8 @@ export const L1_IMPLS: readonly L1Impl[] = [
     )`,
     smokeInput: `{ successes: 71, total: 100 }`,
     smokeExpect: `71.0%`,
+    validateSource: `if (input.successes > input.total) return { ok: false, message: 'successes 不能大于 total:成功数不可能超过总局数' }
+    return { ok: true }`,
   },
 ]
 

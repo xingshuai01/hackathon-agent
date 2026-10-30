@@ -24,6 +24,10 @@ export const success_rate = buildTool({
   }),
   isReadOnly: () => true,
   isConcurrencySafe: () => true,
+  validateInput: (input) => {
+    if (input.successes > input.total) return { ok: false, message: 'successes 不能大于 total:成功数不可能超过总局数' }
+        return { ok: true }
+  },
   async call(input, _ctx) {
     try {
       const rate = input.successes / input.total

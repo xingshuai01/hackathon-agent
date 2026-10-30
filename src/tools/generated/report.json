@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-29T08:47:12.324Z",
+  "generatedAt": "2026-10-30T16:16:50.793Z",
   "specFiles": [
-    "D:\\桌面\\黑客松\\hackathon-agent\\src\\services\\toolsynth\\specs\\arxiv-2210.03629.methods.json"
+    "C:\\Users\\ASUS\\Desktop\\hacthon pro\\src\\services\\toolsynth\\specs\\arxiv-2210.03629.methods.json"
   ],
   "passRate": 0.8333333333333334,
   "tools": [

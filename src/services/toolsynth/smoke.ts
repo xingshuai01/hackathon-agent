@@ -32,20 +32,33 @@ export function runSmokeTest(testFile: string, options: { readonly timeoutMs?: n
   const timeoutMs = options.timeoutMs ?? 20_000
   const startedAt = Date.now()
   const args = ['--test', '--experimental-test-isolation=none', testFile]
-  const run = spawnSync(process.execPath, args, {
+
+  // 首选 pipe 拿输出(失败原因可读);但沙箱/受限环境禁止管道 spawn(EPERM),
+  // 此时退化为 stdio:'ignore' —— 拿不到输出,但退出码仍然可靠,smoke 照常能判 pass/fail。
+  const piped = spawnSync(process.execPath, args, {
     encoding: 'utf8',
     timeout: timeoutMs,
   })
+  // spawnSync 的 error 类型标成 Error,但运行时带 NodeJS.ErrnoException.code
+  const blocked = (piped.error as { code?: string } | undefined)?.code === 'EPERM'
+  const run = blocked
+    ? spawnSync(process.execPath, args, { timeout: timeoutMs, stdio: 'ignore' })
+    : piped
+
   const durationMs = Date.now() - startedAt
-  const tail = (run.stdout ?? '') + (run.stderr ?? '')
-  const passed = run.status === 0 && !run.error
+  const tail =
+    blocked && run.stdout === null
+      ? '(受限环境:无法捕获 smoke 输出,仅有退出码)'
+      : ((piped.stdout ?? '') + (piped.stderr ?? '')).slice(-OUTPUT_LIMIT)
+  // 注意:spawnSync 无错时 .error 是 undefined,不是 null
+  const passed = run.status === 0 && run.error === undefined
   return {
     toolName: '',
     testFile,
     passed,
     exitCode: run.error !== undefined ? null : run.status,
     durationMs,
-    output: tail.slice(-OUTPUT_LIMIT),
+    output: tail,
   }
 }
 

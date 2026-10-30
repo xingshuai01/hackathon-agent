@@ -24,6 +24,10 @@ export const webshop_score = buildTool({
   }),
   isReadOnly: () => true,
   isConcurrencySafe: () => true,
+  validateInput: (input) => {
+    if (input.matchedCount > input.requiredCount) return { ok: false, message: 'matchedCount 不能大于 requiredCount:匹配数不可能超过要求数' }
+        return { ok: true }
+  },
   async call(input, _ctx) {
     try {
       const score = input.matchedCount / input.requiredCount

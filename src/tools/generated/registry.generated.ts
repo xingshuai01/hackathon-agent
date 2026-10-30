@@ -5,8 +5,8 @@
  * - draft 工具(未过 smoke,不进可调用池):normalize_answer —— 见 report.json 的降级原因。
  * - 改 MethodSpec 或 L1 实现后,重跑:node src/services/toolsynth/generate.ts
  *
- * 生成时间:2026-10-29T08:47:12.324Z
- * 来源 specs:D:\桌面\黑客松\hackathon-agent\src\services\toolsynth\specs\arxiv-2210.03629.methods.json
+ * 生成时间:2026-10-30T16:16:50.793Z
+ * 来源 specs:C:\Users\ASUS\Desktop\hacthon pro\src\services\toolsynth\specs\arxiv-2210.03629.methods.json
  */
 
 import type { Tool } from '../types.ts'

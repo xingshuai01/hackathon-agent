@@ -24,6 +24,10 @@ export const should_backoff_to_react = buildTool({
   }),
   isReadOnly: () => true,
   isConcurrencySafe: () => true,
+  validateInput: (input) => {
+    if (input.majorityCount > input.total) return { ok: false, message: 'majorityCount 不能大于 total:多数票数不可能超过总采样数' }
+        return { ok: true }
+  },
   async call(input, _ctx) {
     try {
       const backoff = input.majorityCount < input.total / 2

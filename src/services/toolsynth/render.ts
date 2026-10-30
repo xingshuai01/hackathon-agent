@@ -67,6 +67,17 @@ export function renderToolSource(spec: MethodSpec, impl: L1Impl | undefined, opt
 
   const callBody = impl === undefined ? draftCallBody(spec) : implCallBody(impl)
 
+  const validateBlock =
+    impl?.validateSource === undefined
+      ? ''
+      : `  validateInput: (input) => {
+${impl.validateSource
+        .split('\n')
+        .map((line) => `    ${line}`)
+        .join('\n')}
+  },
+`
+
   return `/**
  * 生成工具:${spec.toolName}
  *
@@ -91,7 +102,7 @@ ${joinFields(fields)}
   }),
   isReadOnly: () => true,
   isConcurrencySafe: () => true,
-${callBody}
+${validateBlock}${callBody}
 })
 `
 }
