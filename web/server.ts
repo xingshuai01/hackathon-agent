@@ -80,6 +80,12 @@ export interface WebController {
    * B 工具库由方法抽取流程生成,这里只回传当前已就绪的工具名。
    */
   ingestPdf(bytes: Uint8Array, filename: string): Promise<IngestResult>
+
+  /** 删除一篇论文的全部知识页(A 库)。幂等:不存在也算删除成功 */
+  deleteKnowledge(paperId: string): Promise<{ readonly deleted: boolean }>
+
+  /** 删除一个技能(正式技能或草案,C 库)。幂等 */
+  deleteSkill(skillId: string): Promise<{ readonly deleted: boolean }>
 }
 
 export interface KnowledgePanelItem {
@@ -284,6 +290,27 @@ export async function startWebServer(options: WebServerOptions): Promise<WebServ
         sendJson(res, 500, { error: message })
       }
       return
+    }
+
+    // ── 删除:知识库(整篇论文)/ 技能库(正式或草案)──
+    if (req.method === 'DELETE') {
+      const knowledgeMatch = /^\/api\/knowledge\/(.+)$/.exec(path)
+      const skillMatch = /^\/api\/skills\/(.+)$/.exec(path)
+      const kind = knowledgeMatch ? 'knowledge' : skillMatch ? 'skill' : null
+      const rawId = knowledgeMatch?.[1] ?? skillMatch?.[1]
+      if (kind !== null && rawId !== undefined) {
+        try {
+          const id = decodeURIComponent(rawId)
+          const result =
+            kind === 'knowledge'
+              ? await options.controller.deleteKnowledge(id)
+              : await options.controller.deleteSkill(id)
+          sendJson(res, 200, result)
+        } catch (err) {
+          sendJson(res, 500, { error: err instanceof Error ? err.message : String(err) })
+        }
+        return
+      }
     }
 
     // ── 面板数据(经注入 provider,server 自己不含业务)──

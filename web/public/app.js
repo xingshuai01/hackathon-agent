@@ -318,6 +318,41 @@
     }
   }
 
+  /** 给卡片加「删除」按钮。工具是提交的生成代码,运行时不可删,只给知识页与技能加。 */
+  function addDeleteButton(card, item) {
+    if (!item.noteId && !item.skillId) return
+    const kind = item.noteId ? 'knowledge' : 'skill'
+    const label =
+      kind === 'knowledge'
+        ? '论文 ' + item.paperId + ' 的全部知识页'
+        : (item.status === 'draft' ? '技能草案 ' : '技能 ') + item.skillId
+
+    const btn = el('button', 'del-btn', '删除')
+    btn.type = 'button'
+    btn.title = '删除 ' + label
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      if (!window.confirm('确认删除 ' + label + ' ?')) return
+      try {
+        const url =
+          kind === 'knowledge'
+            ? '/api/knowledge/' + encodeURIComponent(item.paperId)
+            : '/api/skills/' + encodeURIComponent(item.skillId)
+        const res = await fetch(url, { method: 'DELETE' })
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          window.alert('删除失败:' + (body.error || ('HTTP ' + res.status)))
+          return
+        }
+        await refreshAllPanels()
+        closeModal()
+      } catch (err) {
+        window.alert('删除失败:' + (err && err.message ? err.message : err))
+      }
+    })
+    card.appendChild(btn)
+  }
+
   function renderCard(item) {
     const card = el('div', 'card')
 
@@ -341,6 +376,7 @@
 
     card.addEventListener('click', () => card.classList.toggle('open'))
     if (item.noteId) card.dataset.noteId = item.noteId
+    addDeleteButton(card, item)
     return card
   }
 

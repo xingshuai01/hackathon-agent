@@ -18,7 +18,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { readdir, stat } from 'node:fs/promises'
+import { readdir, rm, stat } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import { loadDotEnv } from './config/env.ts'
 import { bus, type AgentEvent } from './ui/events.ts'
@@ -40,7 +40,7 @@ import { createFixtureCache } from './services/cache/fixtures.ts'
 import { parsePdfBytes, parsePdfFile } from './services/paper/parse.ts'
 import { ingestPaper } from './services/knowledge/ingest.ts'
 import { writeIndexFile } from './services/knowledge/indexFile.ts'
-import { LocalMarkdownStore } from './services/knowledge/localMarkdown.ts'
+import { LocalMarkdownStore, paperDirName } from './services/knowledge/localMarkdown.ts'
 import { createKnowledgeSearchTool } from './services/knowledge/tool.ts'
 import { createSkillStore } from './services/skills/store.ts'
 import { generateSkillDraft } from './services/skills/generate.ts'
@@ -851,6 +851,20 @@ async function cmdWeb(args: Args): Promise<number> {
         busy = false
       })
     },
+
+    async deleteKnowledge(paperId) {
+      const store = new LocalMarkdownStore({ root: knowledgeRoot() })
+      await rm(join(store.rootDir, paperDirName(paperId)), { recursive: true, force: true })
+      await writeIndexFile(store, { root: store.rootDir })
+      return { deleted: true }
+    },
+
+    async deleteSkill(skillId) {
+      // 正式技能是 skills/<id>/ 目录,草案是 skills/_drafts/<id>.md,两处都试(幂等)
+      await rm(join(skillsRoot(), skillId), { recursive: true, force: true })
+      await rm(join(skillDraftsRoot(), `${skillId}.md`), { force: true })
+      return { deleted: true }
+    },
   }
 
   // ── 三面板数据:来自真实存储,不是日志拼凑(AC-F2.4)──
@@ -889,14 +903,27 @@ async function cmdWeb(args: Args): Promise<number> {
     },
 
     async skills(): Promise<SkillPanelItem[]> {
-      const items = await skillStore.list()
-      return items.map((s): SkillPanelItem => ({
+      const official = await skillStore.list()
+      const items: SkillPanelItem[] = official.map((s): SkillPanelItem => ({
         skillId: s.skillId,
         name: s.skillId,
         status: 'active',
         whenToUse: s.whenToUse,
         description: s.description,
       }))
+      // 草案也展示(状态 draft):否则 ingest 生成的技能草案在网页里看不到、也删不掉
+      for (const id of await listDrafts(skillDraftsRoot())) {
+        const skill = await readDraft(skillDraftsRoot(), id)
+        if (skill === null) continue
+        items.push({
+          skillId: id,
+          name: skill.name,
+          status: 'draft',
+          whenToUse: skill.whenToUse,
+          description: skill.description,
+        })
+      }
+      return items
     },
 
     async artifacts(): Promise<ArtifactItem[]> {
