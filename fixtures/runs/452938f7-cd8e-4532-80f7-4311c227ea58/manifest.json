@@ -1,0 +1,28 @@
+{
+  "runId": "452938f7-cd8e-4532-80f7-4311c227ea58",
+  "threadId": "c13c3bff-c7b7-482c-a1ad-915eb6d9cedd",
+  "threadUrl": "https://sciencepal.ai/projects/-/thread/c13c3bff-c7b7-482c-a1ad-915eb6d9cedd",
+  "startedAt": "2026-10-28T12:13:27.233Z",
+  "durationMs": 151888,
+  "events": 525,
+  "terminatedByDone": false,
+  "status": "asked",
+  "error": "{\"code\": \"token_budget_exhausted\", \"message\": \"本次任务已使用 421,904 tokens，达到预算 400,000。已暂停并保留当前进度。是否继续？回复“继续”即可从当前会话续跑，下一轮会获得新的 token 预算。\"}",
+  "agentId": "9e70403e-3a28-42c7-aaf2-702eb6360a8d",
+  "model": "platform::deepseek-v4-pro",
+  "inputSha256": {
+    "file": "f285b0971ae4a790e402fb93966bed3adde2cf0a04977d08b2b40d6ab0cace69",
+    "prompt": "416c34d4c549c2214fefa911dc108cebd80ddbd1854248c03ae69c1c6dfaf7ab"
+  },
+  "outputSha256": {
+    "reading": "b941af46033a2d7d56cea9bcdf1dd860f447aaed6977423576f8848dee769849"
+  },
+  "anchorVerdict": "HAS_PAGE_ANCHOR",
+  "evidence": [
+    "request.json",
+    "stream.ndjson",
+    "run.json",
+    "reading.md",
+    "anchors.json"
+  ]
+}

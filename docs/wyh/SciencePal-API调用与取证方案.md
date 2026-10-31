@@ -42,7 +42,7 @@
 | 提交项 | 我们要交什么 | 靠什么产出 |
 |---|---|---|
 | ① 项目基本信息 | 名称、简介、科学问题、目标用户 | 本地文档 |
-| ② **可运行作品链接** | SciencePal 里一个可访问的 Agent(或项目/工作流) | `POST /api/agents` → `publish`(或分享 thread) |
+| ② **可运行作品链接** | SciencePal 里一个可访问的 Agent(或项目/工作流) | `POST /api/agents` → `publish`(**publish 只能网页端做,API key 被 403 拦,见 §10.5**) |
 | ③ 演示视频 + ≤5 页说明 | 技术方案、创新点、验证结果、局限、计划 | 本地 + `audit/export` 当验证材料 |
 | ④ 原创性与资源使用声明 | 模型/数据/代码/API 清单,赛前 vs 赛中 | 本项目 `git log` + 本文档 §3 端点清单 |
 | 加分:代码仓库 | 就是本仓库 | — |
@@ -421,7 +421,8 @@ docs/evidence/                     # ★ 入库,人看的
 |---|---|---|
 | `scripts/sp-probe.mjs` | 只读探活:key、可用 Agent、可选模型 | 无 |
 | `scripts/sp-run.mjs` | 发起 run → 收流 → 轮询终态 → 落盘 `logs/runs/<runId>/` | 消耗 token |
-| `scripts/sp-create-agent.mjs` | 从 `agents/*.json` 创建 Agent,`--publish` 才发布 | 在账号内创建对象 |
+| `scripts/sp-create-agent.mjs` | 从 `agents/*.json` 创建 Agent,`--publish` 才发布(**注意:`--publish` 走 API key 必被 403 拦,见 §10.5**) | 在账号内创建对象 |
+| `scripts/sp-public-check.mjs` | 只读核查提交物②:`is_public` / 市场状态 / 匿名可达性,`--expect-public` 时未达标退出码 1 | 无 |
 
 ### 10.4 验证进度
 
@@ -431,5 +432,18 @@ docs/evidence/                     # ★ 入库,人看的
   - **结论:不让模型给 page,只给 quote;页码用 `scripts/verify-anchors.mjs` 本地反查后覆盖**
   - 证据:`fixtures/reading/react-2210.03629.{reading.md,anchor-verify.json}`
 - [x] 单篇论文精读的 token 成本与耗时 —— 33 页 / **151.9s / 421,904 tokens**(400k 预算耗尽,状态 `asked`)
-- [ ] `POST /api/skills/items` 的 `scope`(用户级还是全局)
-- [ ] `POST /api/agents/{id}/publish` 后的可见范围与链接形态
+- [x] `POST /api/skills/items` 的 `scope`(用户级还是全局)—— **未测**,但已确认该端点对 key 可用(GET 返回 405 = 只有 POST)
+- [x] `POST /api/agents/{id}/publish` 后的可见范围与链接形态 —— **答案:`is_public` 是只读字段,API 改不了,只能网页端发布**(2026-10-31 实测,见 §10.5)
+
+### 10.5 `is_public` 能不能改成 true(2026-10-31,四条实测)
+
+| # | 做法 | 实测 | 判定 |
+|---|---|---|---|
+| 1 | `PUT /api/agents/{id}` body `{"is_public":true}` | `200`,回包 `is_public:false`(静默忽略)。OpenAPI:`is_public` 仅存在于 `AgentResponse`;`AgentCreateRequest`、`AgentUpdateRequest`、`AgentDraftFinalizeRequest` 均无此字段 | 写不进 |
+| 2 | `POST /api/agents/{id}/publish` body `{"tags":[]}` | `403 API keys are limited to SDK catalogs, agent, run and sandbox endpoints` | key 无权 |
+| 3 | `POST /api/agents` 带 `is_public:true` 重建 | 请求体 schema 无该字段,必填仅 `name`+`system_prompt` | 建时即私有 |
+| 4 | `GET /api/marketplace/agents`(匿名 / 带 key) | 均 `403 Custom agent currently disabled. This feature is not available at the moment.`;`/api/feature-flags` 的 6 个开关里没有市场项 | 平台侧关闭 |
+
+补充:`/api/agents/{id}/access-rules` 同样被 key 白名单拦(403),跨账号读他人 Agent 默认 `403 Access denied` → **发布/共享只能在网页端做**。
+
+链接形态已确认:`https://sciencepal.ai/agents/{agent_id}` 是有效路由(`/agent/{id}`、`/marketplace/agents/{id}` 均 404),但页面是 Next.js 客户端渲染,匿名抓 HTML 只有外壳、**SSR 里不含 Agent 名称**——`curl` 拿到 200 不能作为「链接可用」的证据,必须看 `is_public`。

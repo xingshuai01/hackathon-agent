@@ -205,6 +205,19 @@ export function createKnowledgeSearchTool(options: KnowledgeSearchOptions): Tool
 
       const anchors = hits.map((hit) => `${hit.noteId}(p${hit.page})`).join('、')
       const suffix = result.note === null ? '' : ` · ${result.note}`
+      // ★ 原句必须回填给模型。理由:`summary` 是模型唯一能看到的通道
+      //   (`tools/types.ts` 的 ToolResult 约定:data 给程序,summary 给人和模型)。
+      //   只回 noteId + 页码时,模型看得见「索引标题」却引不出原文,
+      //   回答里就会出现「工具没返回 quote,我无法引用」——实测如此。
+      //   而「每条论断可反查逐字原句」正是本项目的核心主张,不能断在回填这一步。
+      //   长度由 trimQuote(240 字/条)与 maxResultSizeChars 双重兜底。
+      const evidence = hits
+        .map((hit) =>
+          hit.quote === ''
+            ? `[${hit.noteId} p${String(hit.page)}] (原句缺失,不要引用此条)`
+            : `[${hit.noteId} p${String(hit.page)}] "${hit.quote}"`,
+        )
+        .join('\n')
       return toolOk<KnowledgeSearchOutput>(
         {
           hits,
@@ -213,7 +226,7 @@ export function createKnowledgeSearchTool(options: KnowledgeSearchOptions): Tool
           coarseMs: result.coarseMs,
           note: result.note,
         },
-        `命中 ${hits.length} 条:${anchors}${suffix}`,
+        `命中 ${hits.length} 条:${anchors}${suffix}\n${evidence}`,
       )
     },
   })

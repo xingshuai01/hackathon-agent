@@ -1,0 +1,217 @@
+{
+  "pdf": "D:\\XHH\\hackathon-agent\\fixtures\\papers\\transformer-1706.03762.pdf",
+  "reading": "D:\\XHH\\hackathon-agent\\logs\\runs\\f229dde2-e529-4015-864b-53eee2337297\\reading.md",
+  "pages": 16,
+  "metrics": {
+    "pageAccuracy": 0.05555555555555555,
+    "locateRate": 1,
+    "located": 18,
+    "correct": 1,
+    "total": 18
+  },
+  "offsetHist": {
+    "0": 1,
+    "1": 16,
+    "-3": 1
+  },
+  "rows": [
+    {
+      "i": 1,
+      "section": "1 Introduction",
+      "type": "method",
+      "claimed": 1,
+      "found": 2,
+      "frags": 1,
+      "matched": 1,
+      "verdict": "page_mismatch",
+      "claim": "Transformer 完全摒弃循环与卷积,仅依赖注意力机制建立输入输出间的全局依赖。"
+    },
+    {
+      "i": 2,
+      "section": "3.1",
+      "type": "method",
+      "claimed": 2,
+      "found": 3,
+      "frags": 1,
+      "matched": 1,
+      "verdict": "page_mismatch",
+      "claim": "编码器由 N=6 个相同层堆叠而成,每层含多头自注意力与逐位置前馈网络,并带残差连接与层归一化。"
+    },
+    {
+      "i": 3,
+      "section": "3.1",
+      "type": "method",
+      "claimed": 2,
+      "found": 3,
+      "frags": 1,
+      "matched": 1,
+      "verdict": "page_mismatch",
+      "claim": "解码器自注意力子层被掩码,使位置 i 的预测只能依赖小于 i 的已知输出,以保持自回归性质。"
+    },
+    {
+      "i": 4,
+      "section": "3.2.1",
+      "type": "method",
+      "claimed": 3,
+      "found": 4,
+      "frags": 1,
+      "matched": 1,
+      "verdict": "page_mismatch",
+      "claim": "缩放点积注意力定义为 Attention(Q,K,V)=softmax(QK^T/√dk)V。"
+    },
+    {
+      "i": 5,
+      "section": "3.2.1",
+      "type": "method",
+      "claimed": 3,
+      "found": 4,
+      "frags": 1,
+      "matched": 1,
+      "verdict": "page_mismatch",
+      "claim": "对点积除以 1/√dk 进行缩放,以抵消大 dk 下点积幅值增大导致 softmax 梯度极小的问题。"
+    },
+    {
+      "i": 6,
+      "section": "3.2.2",
+      "type": "method",
+      "claimed": 4,
+      "found": 5,
+      "frags": 1,
+      "matched": 1,
+      "verdict": "page_mismatch",
+      "claim": "模型采用 h=8 个并行注意力头,每头维度 dk=dv=dmodel/h=64。"
+    },
+    {
+      "i": 7,
+      "section": "3.3",
+      "type": "method",
+      "claimed": 4,
+      "found": 5,
+      "frags": 1,
+      "matched": 1,
+      "verdict": "page_mismatch",
+      "claim": "前馈网络由两个线性变换夹一个 ReLU 激活构成,内层维度 dff=2048。"
+    },
+    {
+      "i": 8,
+      "section": "3.5",
+      "type": "method",
+      "claimed": 5,
+      "found": 6,
+      "frags": 1,
+      "matched": 1,
+      "verdict": "page_mismatch",
+      "claim": "位置编码采用不同频率的正弦余弦函数 PE(pos,2i)=sin(pos/10000^(2i/dmodel))。"
+    },
+    {
+      "i": 9,
+      "section": "4 / Table 1",
+      "type": "method",
+      "claimed": 5,
+      "found": 5,
+      "frags": 1,
+      "matched": 1,
+      "verdict": "match",
+      "claim": "自注意力层以常数数量的顺序操作连接所有位置,而循环层需 O(n) 次顺序操作。"
+    },
+    {
+      "i": 10,
+      "section": "6.1",
+      "type": "result",
+      "claimed": 7,
+      "found": 8,
+      "frags": 1,
+      "matched": 1,
+      "verdict": "page_mismatch",
+      "claim": "在 WMT 2014 英德任务上,big 模型以 28.4 BLEU 超过此前最佳(含集成)2.0 以上 BLEU。"
+    },
+    {
+      "i": 11,
+      "section": "6.1",
+      "type": "result",
+      "claimed": 7,
+      "found": 8,
+      "frags": 1,
+      "matched": 1,
+      "verdict": "page_mismatch",
+      "claim": "在 WMT 2014 英法任务上,big 模型达到 41.0 BLEU,超过此前所有单模型。"
+    },
+    {
+      "i": 12,
+      "section": "5.2",
+      "type": "result",
+      "claimed": 6,
+      "found": 7,
+      "frags": 1,
+      "matched": 1,
+      "verdict": "page_mismatch",
+      "claim": "base 模型在 8 块 P100 GPU 上训练 100,000 步(约 12 小时)。"
+    },
+    {
+      "i": 13,
+      "section": "5.3",
+      "type": "method",
+      "claimed": 6,
+      "found": 7,
+      "frags": 1,
+      "matched": 1,
+      "verdict": "page_mismatch",
+      "claim": "优化器为 Adam,β1=0.9,β2=0.98,ϵ=10^-9,warmup_steps=4000。"
+    },
+    {
+      "i": 14,
+      "section": "5.4",
+      "type": "method",
+      "claimed": 7,
+      "found": 8,
+      "frags": 1,
+      "matched": 1,
+      "verdict": "page_mismatch",
+      "claim": "base 模型使用 dropout 率 Pdrop=0.1 与标签平滑 ϵls=0.1。"
+    },
+    {
+      "i": 15,
+      "section": "6.1",
+      "type": "method",
+      "claimed": 7,
+      "found": 8,
+      "frags": 1,
+      "matched": 1,
+      "verdict": "page_mismatch",
+      "claim": "推理时使用束宽 4 的束搜索与长度惩罚 α=0.6,base 模型平均最后 5 个检查点。"
+    },
+    {
+      "i": 16,
+      "section": "6.2",
+      "type": "result",
+      "claimed": 8,
+      "found": 5,
+      "frags": 1,
+      "matched": 1,
+      "verdict": "page_mismatch",
+      "claim": "单头注意力比最优设置差 0.9 BLEU,且头数过多时质量同样下降。"
+    },
+    {
+      "i": 17,
+      "section": "6.2",
+      "type": "result",
+      "claimed": 8,
+      "found": 9,
+      "frags": 1,
+      "matched": 1,
+      "verdict": "page_mismatch",
+      "claim": "用学习式位置嵌入替换正弦位置编码,结果与 base 模型几乎相同。"
+    },
+    {
+      "i": 18,
+      "section": "6.3",
+      "type": "result",
+      "claimed": 9,
+      "found": 10,
+      "frags": 1,
+      "matched": 1,
+      "verdict": "page_mismatch",
+      "claim": "4 层 Transformer 在半监督设置下于 WSJ Section 23 达到 92.7 F1,优于除 RNN Grammar 外的所"
+    }
+  ]
+}

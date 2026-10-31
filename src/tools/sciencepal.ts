@@ -211,6 +211,8 @@ export function createSciencePalTool(config: SciencePalConfig): Tool<SciencePalI
     // ── 2. 订阅事件流 ──
     let lastAssistantText = ''
     let assistantTextCount = 0
+    /** 上次上报的进度值。事件流一秒几十帧,同值重复上报会让 CLI 刷屏(实测 60+ 行) */
+    let reportedCount = -1
     let sawEnd = false
     let model: string | null = null
 
@@ -275,11 +277,15 @@ export function createSciencePalTool(config: SciencePalConfig): Tool<SciencePalI
             if (statusType === 'thread_run_end' || statusType === 'finish') sawEnd = true
           }
 
-          ctx.onProgress?.({
-            step: 'sciencepal',
-            done: assistantTextCount,
-            total: Math.max(assistantTextCount, 1),
-          })
+          // 只在计数真的变化时上报:一次 run 的 SSE 有上千帧,逐帧上报等于刷屏
+          if (assistantTextCount !== reportedCount) {
+            reportedCount = assistantTextCount
+            ctx.onProgress?.({
+              step: 'sciencepal',
+              done: assistantTextCount,
+              total: Math.max(assistantTextCount, 1),
+            })
+          }
         }
 
         idx = buffer.indexOf('\n\n')
@@ -355,7 +361,8 @@ export function createSciencePalTool(config: SciencePalConfig): Tool<SciencePalI
         if (cached === null) return toolFail(missingFixtureMessage(cacheKey))
         try {
           const parsed = JSON.parse(cached) as SciencePalResult
-          return toolOk(parsed, `[replay] SciencePal 回答 ${parsed.answer.length} 字`)
+          // ★ answer 必须进 summary,不能只报字数 —— 见下方 live 分支的说明
+          return toolOk(parsed, `[replay] SciencePal 回答(${parsed.answer.length} 字):\n\n${parsed.answer}`)
         } catch {
           return toolFail('fixtures 里的 SciencePal 响应不是合法 JSON,请重新录制')
         }
@@ -364,7 +371,16 @@ export function createSciencePalTool(config: SciencePalConfig): Tool<SciencePalI
       try {
         const result = await runLive(input, ctx)
         await ctx.cache.set(cacheKey, JSON.stringify(result))
-        return toolOk(result, `SciencePal 回答 ${result.answer.length} 字(status=${result.status})`)
+        // ★ 为什么正文必须拼进 summary(而不是只写「回答 N 字」)
+        //   工具契约规定:`data` 给程序用、`summary` 是**唯一回填给模型**的通道
+        //   (`types.ts` ToolResult 注释 + `loop.ts` renderToolResult 只读 summary)。
+        //   先前这里只报字数,模型拿不到任何正文,于是「调用成功但内容作废」——
+        //   实测表现:模型回一句「工具返回了 status=completed,但正文没带回来」。
+        //   截断由 truncateResult 按 maxResultSizeChars(12000)统一兜底。
+        return toolOk(
+          result,
+          `SciencePal 精读结果(status=${result.status},${String(result.answer.length)} 字):\n\n${result.answer}`,
+        )
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         return toolFail(

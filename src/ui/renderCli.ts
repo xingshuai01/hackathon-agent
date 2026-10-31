@@ -38,6 +38,8 @@ function shortArgs(input: unknown): string {
 export function createCliRenderer(options: CliRendererOptions = {}) {
   const verbose = options.verboseTools === true
   let sawText = false
+  /** 上一行进度。同 step/done/total 连发时只打一次 —— 事件流密集时逐帧打会刷屏 */
+  let lastProgress = ''
 
   function handle(event: AgentEvent): void {
     switch (event.type) {
@@ -84,11 +86,14 @@ export function createCliRenderer(options: CliRendererOptions = {}) {
         )
         break
 
-      case 'progress':
-        if (event.total > 1) {
+      case 'progress': {
+        const key = `${event.step}:${String(event.done)}/${String(event.total)}`
+        if (event.total > 1 && key !== lastProgress) {
+          lastProgress = key
           process.stdout.write(dim(`  … ${event.step} ${event.done}/${event.total}\n`))
         }
         break
+      }
 
       case 'error':
         if (sawText) {

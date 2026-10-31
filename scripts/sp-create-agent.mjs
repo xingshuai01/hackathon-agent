@@ -10,7 +10,11 @@
  *
  * 行为:
  *   - 不带 --publish 时只创建,打印 agent_id,不对外可见
- *   - 带 --publish 时再调 POST /api/agents/{id}/publish(可能变成他人可见,谨慎)
+ *   - 带 --publish 时再调 POST /api/agents/{id}/publish
+ *     ⚠️ 2026-10-31 实测:API key 调 publish 必返回
+ *        403 "API keys are limited to SDK catalogs, agent, run and sandbox endpoints"
+ *        → 发布只能登录网页端点。本 flag 保留只为留下这条实测痕迹。
+ *   - is_public 是只读字段,POST/PUT /api/agents 都写不进去(见 docs/wyh/SciencePal-API调用与取证方案.md §10.5)
  *   - 响应写入 logs/runs/sp-agents/<时间戳>.json(已脱敏)
  *
  * 撤销:DELETE /api/agents/{agent_id}

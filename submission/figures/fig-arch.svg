@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 230" width="660" height="230">
+  <style>
+    .box { fill: #ffffff; stroke: #1b1b1b; stroke-width: 1.2; }
+    .lib { fill: #f2f3f5; stroke: #1b1b1b; stroke-width: 1.2; }
+    .loop { fill: #1b1b1b; }
+    .t { font-family: "Segoe UI", Arial, sans-serif; fill: #1b1b1b; }
+    .tw { font-family: "Segoe UI", Arial, sans-serif; fill: #ffffff; }
+    .lbl { font-family: "Segoe UI", Arial, sans-serif; fill: #5a6472; font-size: 9.5px; }
+    .line { stroke: #1b1b1b; stroke-width: 1.1; fill: none; }
+    .arrow { stroke: #1b1b1b; stroke-width: 1.1; fill: #1b1b1b; }
+  </style>
+
+  <rect class="box" x="248" y="6" width="164" height="30" rx="3"/>
+  <text class="t" x="330" y="25" font-size="11.5" text-anchor="middle">paper.pdf — 33 pages</text>
+
+  <path class="line" d="M330 36 L330 60"/>
+  <path class="arrow" d="M326 54 L330 61 L334 54 Z"/>
+  <text class="lbl" x="340" y="54">parse — paragraphs + physical page boundaries</text>
+
+  <path class="line" d="M100 72 L560 72"/>
+  <path class="line" d="M100 72 L100 82"/>
+  <path class="line" d="M330 72 L330 82"/>
+  <path class="line" d="M560 72 L560 82"/>
+  <path class="arrow" d="M96 78 L100 84 L104 78 Z"/>
+  <path class="arrow" d="M326 78 L330 84 L334 78 Z"/>
+  <path class="arrow" d="M556 78 L560 84 L564 78 Z"/>
+
+  <rect class="lib" x="10" y="86" width="180" height="62" rx="3"/>
+  <text class="t" x="20" y="102" font-size="10.5" font-weight="600">Knowledge library</text>
+  <text class="lbl" x="20" y="117">80 notes · 4 papers</text>
+  <text class="lbl" x="20" y="129">one claim + one quote</text>
+  <text class="lbl" x="20" y="141">+ one verified page each</text>
+
+  <rect class="lib" x="240" y="86" width="180" height="62" rx="3"/>
+  <text class="t" x="250" y="102" font-size="10.5" font-weight="600">Tool library</text>
+  <text class="lbl" x="250" y="117">6 specs → 5 active</text>
+  <text class="lbl" x="250" y="129">rendered from the paper</text>
+  <text class="lbl" x="250" y="141">+ one smoke test each</text>
+
+  <rect class="lib" x="470" y="86" width="180" height="62" rx="3"/>
+  <text class="t" x="480" y="102" font-size="10.5" font-weight="600">Skill library</text>
+  <text class="lbl" x="480" y="117">1 approved · 4 drafts</text>
+  <text class="lbl" x="480" y="129">seven sections each</text>
+  <text class="lbl" x="480" y="141">human review required</text>
+
+  <path class="line" d="M330 148 L330 172"/>
+  <path class="arrow" d="M326 166 L330 173 L334 166 Z"/>
+  <text class="lbl" x="340" y="166">loaded into context by the next task</text>
+
+  <rect class="loop" x="90" y="174" width="480" height="34" rx="3"/>
+  <text class="tw" x="330" y="195" font-size="10.5" text-anchor="middle">main loop — knowledge_search · 5 generated tools · sciencepal_query</text>
+
+  <text class="lbl" x="330" y="222" font-size="9" text-anchor="middle">and the run deposits new notes, tools and drafts back into the same three libraries</text>
+</svg>

@@ -72,7 +72,12 @@ interface ChatRequestBody {
   model: string
   messages: readonly Message[]
   stream: boolean
-  stream_options: { include_usage: boolean }
+  /**
+   * 只在 `stream: true` 时合法。
+   * 非流式请求带上它会被 DeepSeek 直接判为参数冲突(实测报错后整条 sideQuery 失败,
+   * 知识检索的 LLM 精筛因此静默降级成关键词排序),所以这里必须可选。
+   */
+  stream_options?: { include_usage: boolean }
   thinking: { type: 'enabled' | 'disabled' }
   tools?: readonly DeepSeekToolSchema[]
   tool_choice?: 'auto' | 'none'
@@ -176,7 +181,6 @@ export function createDeepSeekClient(config: DeepSeekConfig): LlmClient {
         model: request.model ?? config.cheapModel,
         messages: request.messages,
         stream: false,
-        stream_options: { include_usage: false },
         thinking: { type: request.thinking ?? 'disabled' },
         response_format: { type: 'json_object' },
       }

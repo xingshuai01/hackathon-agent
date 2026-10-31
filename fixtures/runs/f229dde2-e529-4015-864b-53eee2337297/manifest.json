@@ -1,0 +1,28 @@
+{
+  "runId": "f229dde2-e529-4015-864b-53eee2337297",
+  "threadId": "7cc3f00e-1999-4c3d-9c32-e842399ac817",
+  "threadUrl": "https://sciencepal.ai/projects/-/thread/7cc3f00e-1999-4c3d-9c32-e842399ac817",
+  "startedAt": "2026-10-31T08:29:47.094Z",
+  "durationMs": 101873,
+  "events": 554,
+  "terminatedByDone": false,
+  "status": "completed",
+  "error": null,
+  "agentId": "9e70403e-3a28-42c7-aaf2-702eb6360a8d",
+  "model": "platform::deepseek-v4-pro",
+  "inputSha256": {
+    "file": "bdfaa68d8984f0dc02beaca527b76f207d99b666d31d1da728ee0728182df697",
+    "prompt": "416c34d4c549c2214fefa911dc108cebd80ddbd1854248c03ae69c1c6dfaf7ab"
+  },
+  "outputSha256": {
+    "reading": "84d49aa2bb59e55d88d55c4b23a063d4a2340ffb22c2cd57b5f4a2d6c4d1f637"
+  },
+  "anchorVerdict": "HAS_PAGE_ANCHOR",
+  "evidence": [
+    "request.json",
+    "stream.ndjson",
+    "run.json",
+    "reading.md",
+    "anchors.json"
+  ]
+}

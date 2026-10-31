@@ -25,7 +25,7 @@ import { bus, type AgentEvent } from './ui/events.ts'
 import { createCliRenderer } from './ui/renderCli.ts'
 import { createToolRegistry, probeInput, type ToolRegistry } from './agent/registry.ts'
 import { runLoop } from './agent/loop.ts'
-import { LOOP_DEFAULTS, type LoopEndReason, type LoopOptions, type LoopResult, type RunTrace } from './agent/types.ts'
+import { LOOP_DEFAULTS, type LoopEndReason, type LoopOptions, type LoopResult, type RunTrace, type ToolCallRecord } from './agent/types.ts'
 import { buildSystemPrompt, DEFAULT_ROLE } from './agent/prompt.ts'
 import { createFakeLlm, demoScript } from './agent/fakeLlm.ts'
 import { infraTools } from './tools/infra.ts'
@@ -97,7 +97,7 @@ hackathon-agent · 科研领域 Agent(知识库 / 工具库 / 技能库)
   node src/main.ts skills check <id>  检查技能是否满足七节要求
   node src/main.ts skills promote <id> 草案通过校验后晋升为正式技能
   node src/main.ts tools doctor       工具体检
-  node src/main.ts web                启动 Web 界面               [未实现,见 #31]
+  node src/main.ts web                启动 Web 界面               [默认 7777]
 
 flags:
   --fake            用剧本化假 LLM,不花 API 额度(无 key 时也能跑)
@@ -379,8 +379,21 @@ async function runAskPipeline(
 
   // 统计真实的工具调用次数(run_end 里要报这个数,不能硬编码)
   let toolCallCount = 0
+  // 复盘要用「调了哪些工具、各自多久、成没成」,而不只是次数。
+  // `tool_end` 事件只带 id 不带 name,所以先按 id 记住 tool_start 的 name。
+  const pendingToolNames = new Map<string, string>()
+  const toolCallRecords: ToolCallRecord[] = []
   const emit = (event: AgentEvent): void => {
-    if (event.type === 'tool_end') toolCallCount += 1
+    if (event.type === 'tool_start') {
+      pendingToolNames.set(event.id, event.name)
+    } else if (event.type === 'tool_end') {
+      toolCallCount += 1
+      toolCallRecords.push({
+        name: pendingToolNames.get(event.id) ?? '(unknown)',
+        ms: event.ms,
+        status: event.ok ? 'ok' : 'error',
+      })
+    }
     bus.emit(event)
   }
 
@@ -406,7 +419,7 @@ async function runAskPipeline(
     endReason: result.reason,
     turns: result.turns,
     tokens: result.usage,
-    toolCalls: [],
+    toolCalls: toolCallRecords,
     failures: [],
   }
   trace.write({ kind: 'run_trace', ...runTrace })
