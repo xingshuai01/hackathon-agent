@@ -5,7 +5,8 @@
 | 版本 | v1.0 |
 | 时间 | 2026-10-31 13:45 |
 | 目标时长 | **4 分 30 秒**（规则 3–5 分钟，留 30 秒容错） |
-| 语言 | 中文口播 + 中文字幕（规则：**所有参赛材料可使用中文或英文**） |
+| 已有成片 | **3 分 10 秒**：`tmp/deliverables/demo-full.mp4`（详见 §1.5，可直接提交）；同段画面另有英文字幕版 `demo-full-en.mp4` / `demo-full-en-all.mp4` |
+| 语言 | 中文口播稿 + 字幕（中文版 / 英文版各一套；规则：**所有参赛材料可使用中文或英文**） |
 | 成片规格 | 1920×1080 / 30fps / MP4(H.264) / 无背景音乐 |
 | 录制对象 | 本机 `node src/main.ts web`（`http://127.0.0.1:7777`） |
 | 主叙事 | 论文读完就忘 → 每次阅读留下三个可复利、可回溯的库 |
@@ -58,6 +59,90 @@
 | 3 | **工具源码里的「来自论文 arxiv:2210.03629 p.7」** | 创新性（工具从论文长出来） | S5 |
 | 4 | **技能草案 → 人工审核 → active** | 创新性（治理机制） | S6 |
 | 5 | **三库计数 80 / 5 / 5 + 运行统计** | 可行性（完整） | S2 / S4 尾 |
+
+---
+
+## 1.5 已录好的成片（3 分 10 秒，符合「3–5 分钟」硬性要求）
+
+`tmp/deliverables/demo-full.mp4` —— **190.4s / 1600×900 / 30fps / 10.1 MB**。
+一次连续录制，无剪辑、无加速、无剧本化假模型；字幕不是手打时间轴，而是按录制打点自动对齐，
+画面里的数字（解析耗时、三库计数、三次运行的统计）全部由录制器写进 `facts.json` 后取用。
+
+**同一段画面另有英文字幕版**（不重录、不剪画面，只换字幕轨；时间轴与镜头逐帧一致）：
+
+| 英文版 | 差异 | 用途 |
+|---|---|---|
+| `tmp/deliverables/demo-full-en.mp4` | 与中文字幕版**画面完全相同**，片头片尾卡仍为中文 | 面向中文评委；与主版互为备份 |
+| `tmp/deliverables/demo-full-en-all.mp4` | 同上，且**片头卡/片尾卡也换成英文** | 面向英文评委（推荐国际赛道用） |
+
+字幕文案与中文逐句对应（编号 01–23 一致），数字同样取自 `facts.json`，没有手填；西文用 Segoe UI
+（`tmp/fonts/segoeui.ttf`）而非雅黑，避免拉丁字形在 CJK 字体里发虚。
+
+| 时间轴 | 画面 | 对应分镜 |
+|---|---|---|
+| 0:00–0:03 | 片头卡：项目名 + 一句话定位 + 「未加速未剪辑」 | S1 替代 |
+| 0:06–0:12 | 首屏：4 篇论文 → 80 条知识页 · 5 个工具 · 5 个技能 | S2 |
+| 0:12–0:21 | 这些计数是解析沉淀的，不是手填 | S2 |
+| 0:22–0:31 | 工具库全览：5 个工具，逐个标明来源论文、页码、适用前提与触发条件 | S2 |
+| 0:31–0:38 | 解析全程不调大模型——确定性抽取，只有提问时才用模型 | S2 补充 |
+| 0:41–0:44 | **真实拖拽**一篇系统没见过的论文（Reflexion, arXiv:2303.11366） | S3 |
+| 0:44–0:52 | 解析结果弹窗：约 2 秒抽出 20 条原子知识页 + 技能草案，逐条列出 quote | S3 核心 |
+| 0:52–1:01 | 滚看 20 条，每条带页码与原文引文；抽不出的地方留空 | S3 |
+| 1:01–1:06 | 三库计数 80 → 100、技能 5 → 6（左栏已刷新） | S3 收尾 |
+| 1:06–1:12 | 新论文的知识页已在左栏——不用重启、不用重建索引 | S3 收尾 |
+| 1:17–1:28 | 第 1 问（针对刚入库那篇），**真实运行 8.8s / 2 次工具调用**，结论逐条挂页码 | S4 核心 |
+| 1:44–1:52 | 点引用胶囊 → 左栏定位到那条知识页（页码 + quote） | S5 |
+| 1:56–2:07 | 第 2 问：论文里只有图表的数值 → **命中原文但读不出数字，明说给不出锚点** | S5 / 局限 |
+| 2:18–2:27 | 第 3 问：知识库范围之外 → **不猜，只说「知识库里没有」** | S5 / 局限 |
+| 2:39–2:46 | 回看三问三答：能引的引到底，引不到与范围外的都如实说 | S6 |
+| 2:49–2:55 | 知识 / 工具 / 技能三库都带来源；技能须人工审核才转 active | S2 补充 |
+| 3:02–3:10 | 片尾卡：一句话结论 + 本地复现命令 + SciencePal 运行记录链接 | S7 |
+
+> **三次运行全部真实**：8.8s / 5.4s / 5.7s，各自 tokens 与工具次数都在画面上（`■ completed · …`）。
+> 第 2、3 问是这支片子最值钱的部分——它证明系统的边界是「有原文才下结论」，
+> 而不是「什么都能答」。
+
+| 文件 | 说明 |
+|---|---|
+| `tmp/deliverables/demo-full.mp4` | **成片**：片头 + 全程中文字幕 + 片尾，可直接提交 |
+| `tmp/deliverables/demo-full-en.mp4` | **英文字幕版**：画面与上行完全相同（片头片尾仍中文），只换字幕轨 |
+| `tmp/deliverables/demo-full-en-all.mp4` | **英文字幕 + 英文片头片尾**：给英文评委看的完整版 |
+| `tmp/deliverables/demo-full-captioned.mp4` | 去片头片尾版（176s 主体，便于二次剪辑/配音） |
+| `tmp/deliverables/demo-full-captioned-en.mp4` | 同上，英文字幕 |
+| `tmp/deliverables/demo-full-raw.mp4` | 无字幕版，留给后期自己配 |
+| `tmp/deliverables/web-demo-captioned.mp4` | 早期 28s 片段（只有提问+引用），已被上面取代 |
+
+重录方式（脚本在 `tmp/`，不进仓库）：
+
+```bash
+# 1. 隔离环境:知识库与技能库都指向 tmp,录制过程不会污染 fixtures/ 与 skills/
+cp -r fixtures/knowledge tmp/demo/knowledge && cp -r skills tmp/demo/skills
+KNOWLEDGE_DIR=tmp/demo/knowledge SKILLS_DIR=tmp/demo/skills node src/main.ts web
+
+# 2. 无头浏览器(调试端口;必须用非默认配置目录)
+"/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" --headless=new \
+  --remote-debugging-port=9222 --user-data-dir="D://XHH//hackathon-agent//tmp//edge-rec2" \
+  --window-size=1600,900 --hide-scrollbars about:blank
+
+# 3. 驱动 + 抓帧 + 打点(同时写 facts.json,字幕据此取真实数字)
+node tmp/record-full.mjs --pdf tmp/reflexion-2303.11366.pdf --out tmp/rec/full
+
+# 4. 拼 30fps → 烧字幕 → 加片头片尾
+node tmp/mkvideo.mjs --dir tmp/rec/full --out tmp/deliverables/demo-full-raw.mp4 --extra 1.6
+node tmp/captions-full.mjs
+node tmp/titlecard.mjs
+
+# 5. 英文字幕版(复用同一段 raw + 同一套打点,只换字幕文案与字体)
+node tmp/captions-full.mjs --lang en          # → demo-full-captioned-en.mp4
+node tmp/titlecard-en.mjs                     # → demo-full-en-all.mp4(英文片头片尾)
+# demo-full-en.mp4 = 中文片头片尾 + 英文字幕,用现成 head/tail 直接 concat:
+# ffmpeg -i tmp/rec/head.mp4 -i tmp/deliverables/demo-full-captioned-en.mp4 -i tmp/rec/tail.mp4 \
+#   -filter_complex "[0:v][1:v][2:v]concat=n=3:v=1:a=0[v]" -map "[v]" -crf 20 ... demo-full-en.mp4
+```
+
+> 三个坑：① 每录完一次要回滚 `tmp/demo/knowledge`（删掉新入库那篇 + 还原 `INDEX.md`），
+> 否则第二次录制会从 100 条开始；② 成片别放 `out/`，那个目录会被前端「产物条」扫到并显示文件名；
+> ③ ffmpeg 的 `fontfile=` 不要带盘符（冒号会被当选项分隔符），把字体拷到 `tmp/fonts/` 用相对路径。
 
 ---
 

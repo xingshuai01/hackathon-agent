@@ -445,3 +445,26 @@ describe('store · 纯函数', () => {
     assert.ok(!tokens.includes('a'))
   })
 })
+
+// ─────────────────────────────────────────────────────────────
+// 8. 跨实例缓存(Web 端「拖 PDF 后三面板不刷新」的回归)
+// ─────────────────────────────────────────────────────────────
+
+describe('store · 跨实例缓存', () => {
+  it('另一个实例写盘后本实例仍是旧快照,invalidate 之后才看到', async () => {
+    // 面板用的实例:先把缓存填成「空」
+    const panel = new LocalMarkdownStore({ root })
+    assert.deepEqual(await panel.listPaperIds(), [])
+
+    // 解析用的另一个实例写盘(Web 端 ingest 就是这么干的)
+    const writer = new LocalMarkdownStore({ root })
+    await writer.put(note())
+
+    // 不清缓存 → 面板永远停在旧计数,这正是拖完 PDF 知识库 80 条不涨的原因
+    assert.deepEqual(await panel.listPaperIds(), [])
+
+    panel.invalidate()
+    assert.deepEqual(await panel.listPaperIds(), ['arxiv:2210.03629'])
+    assert.deepEqual(await panel.get('arxiv:2210.03629#p3#a1b2c3'), note())
+  })
+})

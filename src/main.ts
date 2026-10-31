@@ -860,15 +860,24 @@ async function cmdWeb(args: Args): Promise<number> {
     ingestPdf(bytes, filename) {
       if (busy) throw new BusyError()
       busy = true
-      return ingestPdfFromBytes(bytes, filename).finally(() => {
-        busy = false
-      })
+      return ingestPdfFromBytes(bytes, filename)
+        .then((result) => {
+          // 解析内部另建了一个 store 实例写盘,面板用的这个实例缓存不会自己失效。
+          // 不显式清掉,拖完 PDF 三面板仍显示旧计数(实测 80 条不涨)。
+          knowledgeStore.invalidate()
+          return result
+        })
+        .finally(() => {
+          busy = false
+        })
     },
 
     async deleteKnowledge(paperId) {
       const store = new LocalMarkdownStore({ root: knowledgeRoot() })
       await rm(join(store.rootDir, paperDirName(paperId)), { recursive: true, force: true })
       await writeIndexFile(store, { root: store.rootDir })
+      // 同上:删除走的是另一个实例,面板缓存需显式失效,否则删掉的知识页仍留在列表里
+      knowledgeStore.invalidate()
       return { deleted: true }
     },
 
