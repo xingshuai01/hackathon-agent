@@ -1,4 +1,4 @@
-# 04 · Originality and Resource-Use Declaration — Science Agent Coworker Hajimi
+# Originality and Resource-Use Declaration — Science Agent Coworker Hajimi
 
 > Submission copy for *Global AI4Science Hackathon 2026*.
 > Everything below is verifiable from the repository: `git log`, `package.json`, and the gate command
@@ -94,7 +94,7 @@ For honesty, we separate "new" from "assembled well":
 | Category | Pre-existing before the event | Produced during the event |
 |---|---|---|
 | Source code | **None** | All 12,404 lines (first commit 2026-10-26) |
-| Tests | **None** | All 5,510 lines, 378 passing tests |
+| Tests | **None** | All 5,510 lines, 379 passing tests |
 | Design documents | **None** | All 21 documents |
 | Datasets | Four public arXiv papers (public prior art, not our creation) | All derived notes, fixtures, tools, skills |
 | SciencePal agent | Platform-provided built-in agents | **Two** custom agents created by us ("Research Distiller", "Paper Close Reader"), on two members' accounts |
@@ -127,7 +127,7 @@ We used AI coding assistants during the event, as most teams do. To keep this ho
 - **AI assistants drafted** a substantial share of implementation code, tests and documentation.
 - **Every change passed a mechanical gate** before acceptance: `npm run typecheck` (0 errors),
   `npm run check:rules` (a custom checker enforcing dependency allow-list, import boundaries, banned
-  `any`/`enum`/`namespace`), and `npm test` (378 tests, 0 failures).
+  `any`/`enum`/`namespace`), and `npm test` (379 tests, 0 failures).
 - **Every change was reviewed** by a human, and the review findings are themselves committed as a
   document (`docs/REVIEW-2026-10-29.md`, `docs/REVIEW-B-2026-10-30.md`) — including defects we found and
   fixed, and known gaps we did not fix.
@@ -142,6 +142,9 @@ extracting methods, distilling skills — and it is surrounded by verification t
 
 - No restricted or prohibited library, model SDK or agent framework is used (enforced by an automated
   checker, not by convention).
+- The repository is released under the **MIT licence** (`LICENSE`); copyright is held by the three team
+  members. Third-party components keep their own licences (`zod` MIT, `pdfjs-dist` Apache-2.0), and the
+  paper PDFs are excluded from the repository, so no third-party text is redistributed under MIT.
 - No personal, confidential, clinical or licensed data is processed or stored.
 - Copyrighted PDFs are not redistributed; only short attributed quotations are retained.
 - SciencePal is used for a **core product function**: literature close reading invoked as a tool node
@@ -160,7 +163,7 @@ file or a command that anyone can run in the repository.
 
 | Claim | How to check it |
 |---|---|
-| 378 passing tests, 0 type errors, 0 rule violations | `npm run verify` |
+| 379 passing tests, 0 type errors, 0 rule violations | `npm run verify` |
 | 12,404 source lines and 5,510 test lines | `wc -l $(git ls-files "*.ts")` |
 | 40 commits between 2026-10-26 and 2026-10-31, all by team members | `git log --since=2026-10-26 --until=2026-10-31` |
 | 80 atomic notes derived from 4 papers | `fixtures/knowledge/INDEX.md` |
@@ -173,4 +176,6 @@ file or a command that anyone can run in the repository.
 > On the nature of item ②: the current platform version offers no "publicly chattable custom agent"
 > (no publish action in the front end; the marketplace endpoint returns `Custom agent disabled`), so the
 > link is a **public replay of the complete run**, not a session a visitor can continue. The live run is
-> covered by the 3–5 minute demo video; local reproduction is `node src/main.ts web` or `--replay`.
+> covered by the 3–5 minute demo video; local reproduction is `node src/main.ts web`. Ingesting a PDF
+> needs no key at all; asking needs two credentials the reviewer supplies, since none ship with the
+> repo — `DEEPSEEK_API_KEY` for the agent loop and `SCIENCEPAL_API_KEY` for the SciencePal tool node.

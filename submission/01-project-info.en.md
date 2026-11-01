@@ -1,4 +1,4 @@
-# 01 · Project Information — Science Agent Coworker Hajimi
+# Project Information — Science Agent Coworker Hajimi
 
 > Submission copy for *Global AI4Science Hackathon 2026*. Track: **AI Agent**.
 > This Markdown is the source of truth; `node scripts/build-submission-pdf.mjs` renders the PDF
@@ -117,7 +117,7 @@ by our pipeline rather than pasted into a document.
 | Anchor (quote → page) locate rate | **99.7% – 100%** |
 | Generated tools with smoke tests | **5** |
 | Skills | 1 approved + 4 drafts awaiting human review |
-| Automated tests | **378 passing, 0 failing** |
+| Automated tests | **379 passing, 0 failing** |
 | Code | 12,404 lines source + 5,510 lines tests, 21 design documents |
 | Dependencies | 2 runtime (`zod`, `pdfjs-dist`), 0 agent frameworks |
 
@@ -127,7 +127,7 @@ Two different sample bases behind these numbers: the page-number observation cov
 Reproduce in one command:
 
 ```bash
-npm install && npm run verify        # typecheck + rule checks + 378 tests
+npm install && npm run verify        # typecheck + rule checks + 379 tests
 node src/main.ts web                 # three-panel UI at http://127.0.0.1:7777
 KNOWLEDGE_DIR=fixtures/knowledge node src/main.ts web   # panels preloaded, no PDF needed
 ```
@@ -151,7 +151,11 @@ It was opened in a browser with zero cookies to confirm it needs no login.
 > "publicly chattable custom agent" (the front end has no publish action, and the marketplace
 > endpoint returns `Custom agent disabled`). So this is a **publicly viewable replay of the full run**,
 > not a session a visitor can continue. For a live run, see the 3–5 minute demo video (item ③-a);
-> to reproduce locally, use the two commands above — `--replay` works fully offline.
+> to reproduce locally, use the commands above. Ingesting is local and needs no key — parsing and
+> extraction are deterministic, with no per-note model call. **Asking needs two credentials you
+> supply yourself**: `DEEPSEEK_API_KEY` (every agent run) and `SCIENCEPAL_API_KEY` (only the
+> SciencePal tool node). Neither ships with the repo, and usage is billed to the reviewer's own
+> account. The three panels and the 80 frozen notes render with no key at all.
 
 ## Domain scope
 
@@ -178,5 +182,5 @@ If the submission form gives you one description field, paste this instead of th
 > files that stay in a review queue until a human approves them. SciencePal performs the close
 > reading inside our main loop as a tool node, and our system governs what may enter the knowledge
 > base. Built for graduate students, PIs and systematic-review teams: 4 papers, 80 notes, 5 tools,
-> 378 passing tests, zero agent frameworks.
+> 379 passing tests, zero agent frameworks.
 

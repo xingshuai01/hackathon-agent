@@ -1,4 +1,4 @@
-# 04 · 原创性与资源使用声明 —— Science Agent Coworker Hajimi(中文审阅版)
+# 原创性与资源使用声明 —— Science Agent Coworker Hajimi(中文审阅版)
 
 > 这是 [`04-originality.en.md`](04-originality.en.md) 的中文对照版,用于内部审查,不提交。
 > 文中每一句都能被仓库验证(`git log` / `package.json` / `npm run verify`)。
@@ -122,6 +122,8 @@
 ## 9. 合规情况
 
 - 未使用任何受限或被禁止的库、模型 SDK、Agent 框架(由自动检查器执行,而非靠约定)。
+- 仓库以 **MIT 许可**发布(`LICENSE`),版权归三位团队成员所有。第三方组件保留各自许可
+  (`zod` MIT、`pdfjs-dist` Apache-2.0);论文 PDF 已从仓库排除,因此没有第三方正文被 MIT 再分发。
 - 不处理、不存储个人信息、保密信息、临床或许可受限数据。
 - 不重新分发受版权保护的 PDF,仅保留短的、带署名的引用。
 - SciencePal 用于**产品核心功能**:在主循环内以工具节点形式调用文献精读,其产物被流水线程序化消费。

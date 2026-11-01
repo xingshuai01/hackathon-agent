@@ -1,4 +1,4 @@
-# 03b · 项目说明 —— Science Agent Coworker Hajimi（中文审阅版）
+# 项目说明 —— Science Agent Coworker Hajimi（中文审阅版）
 
 *Global AI4Science Hackathon 2026 · 赛道：AI Agent · 共五页，每页一个论点。*
 
@@ -82,7 +82,7 @@
 
 | 主张 | 实测量 | 复现方式 |
 |---|---|---|
-| 测试 | **378 通过 / 0 失败**，94 个 suite，8.1 秒 | `npm run verify` |
+| 测试 | **379 通过 / 0 失败**，95 个 suite，11.0 秒 | `npm run verify` |
 | 知识库 | **4 篇论文 → 80 条知识页**（77 high / 3 medium） | `node src/main.ts ingest fixtures/papers` |
 | 锚定 | **99.7%–100%** 的知识页定位到真实页码 | 同上，会逐篇打印定位率 |
 | 工具库 | 6 个规格 → **5 个 active** + 1 个参数模板 | `node src/main.ts tools doctor` |
@@ -97,11 +97,13 @@
 
 第三条的意义超出这个工具本身：一个**能跑但算错**的生成工具，比没有这个工具更糟，因为它看起来像一项能力。
 
-**不需要 key 也能复现。** 80 条知识页冻结在 `fixtures/knowledge/`，因此无需 API key、无需网络、无需跑入库，就能查看数据与界面：
+**不需要 key 也能查看数据与界面。** 80 条知识页冻结在 `fixtures/knowledge/`，因此无需 API key、无需网络、无需跑入库，就能查看数据与界面：
 
 ```bash
 KNOWLEDGE_DIR=fixtures/knowledge node src/main.ts web
 ```
+
+要真跑一遍循环则不同，而且只是部分不同：入库一篇 PDF 仍然不需要 key（见 §3.4，抽取是规则而非逐条调模型）；提问才需要自备两个 key，仓库里不含任何密钥——`DEEPSEEK_API_KEY`（主循环用）、`SCIENCEPAL_API_KEY`（仅 SciencePal 工具节点用）。费用由使用者自己的账号承担。
 
 <!-- pagebreak -->
 

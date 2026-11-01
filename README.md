@@ -1,7 +1,7 @@
 # hackathon-agent
 
 > 4 天黑客松项目 · 团队定位:**偏工程**,目标是通过比赛系统学习 Agent 架构开发
-> 仓库私有,比赛结束后再考虑公开。
+> 仓库公开,采用 [MIT 许可](LICENSE);提交材料见 [submission/](submission/),设计文档见 [docs/](docs/)。
 
 ## 我们在做什么
 
@@ -172,3 +172,15 @@ npm run verify   # typecheck + 规则检查 + 38 个契约测试
 ```
 
 > 代码目录(`src/`、`web/`)待 D1 落地后补充,详见 [`docs/SDD.md`](docs/SDD.md) §11。
+
+## 许可
+
+本项目代码采用 **MIT 许可**，全文见 [`LICENSE`](LICENSE)；版权归三位团队成员所有
+（WANG Xingshuai / WAN Yihui / ZHOU Yixuan）。
+
+三点边界：
+
+- **第三方组件各自保留原许可**：`zod`（MIT）、`pdfjs-dist`（Apache-2.0），MIT 许可不覆盖它们。
+- **论文不随 MIT 再分发**：`fixtures/papers/*.pdf` 已被 `.gitignore` 排除，仓库里只留 arXiv 编号；
+  界面与知识页中的引文是逐字短引，标注了论文与页码。
+- **演示数据可用**：`fixtures/knowledge/`、`fixtures/runs/`、`fixtures/reading/` 是本项目产物，同样适用 MIT。

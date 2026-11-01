@@ -1,4 +1,4 @@
-# 01 · 项目基本信息 —— Science Agent Coworker Hajimi(中文审阅版)
+# 项目基本信息 —— Science Agent Coworker Hajimi(中文审阅版)
 
 > 这是 [`01-project-info.en.md`](01-project-info.en.md) 的中文对照版,**用于你们内部审查**,
 > 不提交。文末「审阅备注」是只给你们看的话。
@@ -101,7 +101,7 @@ SciencePal 是产品主循环里的运行时组件,它的产物被流水线**程
 | 锚点(quote → 页码)定位率 | **99.7% – 100%** |
 | 带 smoke test 的生成工具 | **5 个** |
 | 技能 | 1 个已审核 + 4 份待审草案 |
-| 自动化测试 | **378 通过 / 0 失败** |
+| 自动化测试 | **379 通过 / 0 失败** |
 | 代码量 | 源码 12,404 行 + 测试 5,510 行,设计文档 21 份 |
 
 **两个数字的样本不同,别混着说:** 「页码 38 条仅 1 条对」来自**两篇论文共 38 条论断**
@@ -111,7 +111,7 @@ SciencePal 是产品主循环里的运行时组件,它的产物被流水线**程
 一条命令可复现:
 
 ```bash
-npm install && npm run verify        # typecheck + 规则检查 + 378 个测试
+npm install && npm run verify        # typecheck + 规则检查 + 379 个测试
 node src/main.ts web                 # 三面板界面 http://127.0.0.1:7777
 KNOWLEDGE_DIR=fixtures/knowledge node src/main.ts web   # 免 PDF,面板直接有数据
 ```
@@ -133,7 +133,10 @@ KNOWLEDGE_DIR=fixtures/knowledge node src/main.ts web   # 免 PDF,面板直接�
 > **这条链接是什么、不是什么。** 平台当前版本不提供「自定义 Agent 公开可对话」的能力
 > (前端无发布入口,市场接口返回 `Custom agent disabled`),所以它是**可公开查看的完整执行过程回放**,
 > 不是可继续追问的会话。需要现场实时跑一遍的,见 3–5 分钟演示视频(提交物③-a);
-> 本地复现用上一节那两条命令,全程零网络也可用 `--replay`。
+> 本地复现用上一节那几条命令。**入库不需要 key**——解析与抽取是确定性规则,不按条调用模型;
+> 提问才需要自备两个 key:`DEEPSEEK_API_KEY`(每次 agent 运行都要)与 `SCIENCEPAL_API_KEY`
+> (仅 SciencePal 工具节点需要)。仓库里不含任何密钥,费用由使用者自己的账号承担;
+> 仅查看三面板与 80 条冻结知识页,则不需要任何 key。
 
 ## 领域范围
 
@@ -155,7 +158,7 @@ KNOWLEDGE_DIR=fixtures/knowledge node src/main.ts web   # 免 PDF,面板直接�
 > 故页码一律由 quote 反查,定位率 99.7%–100%);② 从论文方法抽出的可执行工具,每个自带 smoke test;③ 七节技能文件,
 > 未经人工审核不转正式。SciencePal 在主循环里作为工具节点承担精读,我们的系统负责治理
 > 「什么能进知识库」。面向研究生、PI 与系统综述团队:4 篇论文、80 条知识页、5 个工具、
-> 378 个测试全绿、零 Agent 框架。
+> 379 个测试全绿、零 Agent 框架。
 
 ---
 

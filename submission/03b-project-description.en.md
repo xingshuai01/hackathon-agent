@@ -1,4 +1,4 @@
-# 03b · Project Description — Science Agent Coworker Hajimi
+# Project Description — Science Agent Coworker Hajimi
 
 *Global AI4Science Hackathon 2026 · Track: AI Agent · five pages, one argument per page.*
 
@@ -42,7 +42,7 @@ against:** twenty papers, one group meeting on Thursday, and a summary that some
 
 **The loop.** A DeepSeek-backed agent loop with an explicit tool registry: `knowledge_search` (query
 the notes), the five generated method tools, `sciencepal_query` (deep reading of paper text), plus file
-and shell primitives. Every run is traced into `logs/runs/<id>/` and can be replayed offline.
+and shell primitives. Every run is traced into `logs/runs/<id>/` for after-the-fact inspection.
 
 **Where SciencePal sits.** Not as a wrapper and not as a chat window: one tool node inside our loop,
 called over three endpoints (`agent/initiate`, `agent-run/{id}/stream`, `agent-run/{id}`). It performs
@@ -63,7 +63,7 @@ constraints.
 
 <!-- pagebreak -->
 
-## 3. Two decisions that are hard to copy
+## 3. Three decisions that are hard to copy — where the innovation sits
 
 ### 3.1 Provenance is constructed, not reported
 
@@ -112,7 +112,7 @@ is its source sentence, not a rewrite.
 
 | Claim | Measurement | How to reproduce |
 |---|---|---|
-| Test suite | **378 passing, 0 failing**, 94 suites, 8.1 s | `npm run verify` |
+| Test suite | **379 passing, 0 failing**, 95 suites, 11.0 s | `npm run verify` |
 | Knowledge library | **4 papers → 80 notes** (77 high / 3 medium) | `node src/main.ts ingest fixtures/papers` |
 | Anchoring | **99.7%–100%** of notes located to a real page | same command, per-paper rate printed |
 | Tool library | 6 specs → **5 active** + 1 parameter template | `node src/main.ts tools doctor` |
@@ -133,12 +133,17 @@ Numbers are cheap; the more useful claim is that the loop found real defects. Th
 The third generalises: a tool that *runs* but computes nonsense is worse than no tool, because it
 looks like a capability.
 
-**Reproducible without a key.** The 80 notes are frozen in `fixtures/knowledge/`, so both data and
+**Inspectable without a key.** The 80 notes are frozen in `fixtures/knowledge/`, so both data and
 interface can be inspected with no API key, no network and no ingestion run:
 
 ```bash
 KNOWLEDGE_DIR=fixtures/knowledge node src/main.ts web
 ```
+
+Running the loop is a different matter, and only partly so: ingesting a PDF still needs no key
+(§3.4 — rules, not a model call per note), but asking a question needs two credentials the reviewer
+supplies, since none ship with the repo — `DEEPSEEK_API_KEY` for the agent loop and
+`SCIENCEPAL_API_KEY` for the SciencePal tool node. All usage is billed to that account.
 
 <!-- pagebreak -->
 

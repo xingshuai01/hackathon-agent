@@ -2,6 +2,7 @@
   "name": "hackathon-agent",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "科研领域 Agent:知识库 / 工具库 / 技能库三个创新模块",
   "engines": {
