@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>科研搭子 · 哈基米</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background:
+      radial-gradient(circle at 50% 32%, #FFFDF9 0%, #FFF3E2 38%, #FFE7D3 66%, #F6DCC8 100%);
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    overflow: hidden;
+  }
+
+  .glow {
+    position: absolute;
+    width: 640px;
+    height: 640px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 214, 170, 0.5) 0%, rgba(255, 214, 170, 0) 68%);
+    filter: blur(6px);
+    animation: glowPulse 4s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  svg.mascot {
+    width: min(72vw, 420px);
+    height: auto;
+    filter: drop-shadow(0 24px 34px rgba(196, 150, 110, 0.24));
+    position: relative;
+    z-index: 2;
+  }
+
+  .caption {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    color: #7A5A44;
+    letter-spacing: 0.14em;
+    margin-top: 4px;
+  }
+  .caption .name {
+    font-size: 30px;
+    font-weight: 800;
+    background: linear-gradient(120deg, #FF9A76 0%, #FF6FA0 45%, #9B8CFF 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .caption .sub {
+    font-size: 13px;
+    color: #B08A6C;
+    margin-top: 6px;
+    letter-spacing: 0.32em;
+  }
+
+  /* ─────────── 角色动画 ─────────── */
+  .hachimi { animation: float 3.4s ease-in-out infinite; transform-origin: center; }
+
+  .shadow {
+    animation: shadowPulse 3.4s ease-in-out infinite;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .ear-l,
+  .ear-r {
+    transform-box: fill-box;
+    transform-origin: bottom center;
+    animation: 3.2s ease-in-out infinite;
+  }
+  .ear-l { animation-name: wiggleL; }
+  .ear-r { animation-name: wiggleR; }
+
+  .eye-l,
+  .eye-r {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: blink 4.4s infinite;
+  }
+
+  /* 写字的小动静:笔和纸轻轻转动 */
+  .writing {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: write 2.2s ease-in-out infinite;
+  }
+
+  .sparkle {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: twinkle 2.6s ease-in-out infinite;
+  }
+  .s1 { animation-delay: 0s; }
+  .s2 { animation-delay: 0.7s; }
+  .s3 { animation-delay: 1.4s; }
+  .s4 { animation-delay: 2.1s; }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-14px); }
+  }
+  @keyframes shadowPulse {
+    0%, 100% { transform: scaleX(1); opacity: 0.10; }
+    50%      { transform: scaleX(0.82); opacity: 0.06; }
+  }
+  @keyframes wiggleL {
+    0%, 100% { transform: rotate(0deg); }
+    50%      { transform: rotate(-5deg); }
+  }
+  @keyframes wiggleR {
+    0%, 100% { transform: rotate(0deg); }
+    50%      { transform: rotate(5deg); }
+  }
+  @keyframes blink {
+    0%, 91%, 100% { transform: scaleY(1); }
+    94.5%         { transform: scaleY(0.08); }
+  }
+  @keyframes write {
+    0%, 100% { transform: rotate(-4deg); }
+    50%      { transform: rotate(-6.5deg); }
+  }
+  @keyframes twinkle {
+    0%, 100% { transform: scale(0.78); opacity: 0.3; }
+    50%      { transform: scale(1.18); opacity: 1; }
+  }
+  @keyframes glowPulse {
+    0%, 100% { transform: scale(1); opacity: 0.85; }
+    50%      { transform: scale(1.06); opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hachimi, .shadow, .ear-l, .ear-r, .eye-l, .eye-r, .writing, .sparkle, .glow {
+      animation: none !important;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+
+  <svg class="mascot" viewBox="0 0 400 460" role="img" aria-label="科研搭子哈基米(小黑猫)">
+    <defs>
+      <radialGradient id="furGrad" cx="42%" cy="24%" r="80%">
+        <stop offset="0%" stop-color="#3D3739" />
+        <stop offset="60%" stop-color="#2E2A2B" />
+        <stop offset="100%" stop-color="#231F20" />
+      </radialGradient>
+      <radialGradient id="earGrad" cx="50%" cy="18%" r="92%">
+        <stop offset="0%" stop-color="#3A3436" />
+        <stop offset="100%" stop-color="#282324" />
+      </radialGradient>
+      <radialGradient id="eyeGrad" cx="46%" cy="34%" r="72%">
+        <stop offset="0%" stop-color="#B7ECFF" />
+        <stop offset="45%" stop-color="#5CC7F7" />
+        <stop offset="100%" stop-color="#2C8FD6" />
+      </radialGradient>
+      <radialGradient id="cheekGrad" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#FF8FB0" stop-opacity="0.85" />
+        <stop offset="100%" stop-color="#FF8FB0" stop-opacity="0" />
+      </radialGradient>
+      <linearGradient id="penGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#FFB27A" />
+        <stop offset="100%" stop-color="#F0803E" />
+      </linearGradient>
+      <linearGradient id="paperGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#FFFFFF" />
+        <stop offset="100%" stop-color="#F2ECE3" />
+      </linearGradient>
+    </defs>
+
+    <ellipse class="shadow" cx="200" cy="438" rx="96" ry="14" fill="#000000" opacity="0.10" />
+
+    <g class="hachimi">
+      <!-- 大猫耳 -->
+      <g class="ear-l">
+        <path d="M84 178 L104 14 L190 142 Z" fill="url(#earGrad)" stroke="#4A4346" stroke-width="4" stroke-linejoin="round" />
+        <path d="M108 158 L122 44 L172 128 Z" fill="#FFA6BF" opacity="0.92" />
+      </g>
+      <g class="ear-r">
+        <path d="M316 178 L296 14 L210 142 Z" fill="url(#earGrad)" stroke="#4A4346" stroke-width="4" stroke-linejoin="round" />
+        <path d="M292 158 L278 44 L228 128 Z" fill="#FFA6BF" opacity="0.92" />
+      </g>
+
+      <!-- 身体 -->
+      <ellipse cx="200" cy="262" rx="138" ry="130" fill="url(#furGrad)" stroke="#4A4346" stroke-width="4" />
+      <ellipse cx="200" cy="300" rx="80" ry="52" fill="#4A4346" opacity="0.35" />
+
+      <!-- 蓝眼睛 -->
+      <g class="eye-l">
+        <ellipse cx="150" cy="248" rx="23" ry="28" fill="url(#eyeGrad)" />
+        <circle cx="142" cy="236" r="8.5" fill="#FFFFFF" />
+        <circle cx="158" cy="258" r="4" fill="#FFFFFF" opacity="0.7" />
+      </g>
+      <g class="eye-r">
+        <ellipse cx="250" cy="248" rx="23" ry="28" fill="url(#eyeGrad)" />
+        <circle cx="242" cy="236" r="8.5" fill="#FFFFFF" />
+        <circle cx="258" cy="258" r="4" fill="#FFFFFF" opacity="0.7" />
+      </g>
+
+      <!-- 方框眼镜 -->
+      <g fill="none" stroke="#C39A5E" stroke-width="5">
+        <rect x="118" y="216" width="64" height="64" rx="13" fill="rgba(140,200,255,0.08)" />
+        <rect x="218" y="216" width="64" height="64" rx="13" fill="rgba(140,200,255,0.08)" />
+        <path d="M182 242 Q200 234 218 242" stroke-linejoin="round" />
+        <path d="M118 238 L98 230" stroke-linecap="round" />
+        <path d="M282 238 L302 230" stroke-linecap="round" />
+      </g>
+      <g stroke="#FFFFFF" stroke-width="3.4" stroke-linecap="round" opacity="0.75">
+        <path d="M132 258 l16 -18" />
+        <path d="M232 258 l16 -18" />
+      </g>
+
+      <!-- 腮红 -->
+      <ellipse cx="98" cy="292" rx="24" ry="14" fill="url(#cheekGrad)" />
+      <ellipse cx="302" cy="292" rx="24" ry="14" fill="url(#cheekGrad)" />
+
+      <!-- 猫嘴 -->
+      <path d="M186 300 Q193 311 200 302 Q207 311 214 300" fill="none" stroke="#FFB0C6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+
+      <!-- 纸 + 笔(带轻微书写动效) -->
+      <g class="writing">
+        <g transform="rotate(-7 200 392)">
+          <rect x="140" y="352" width="122" height="84" rx="6" fill="url(#paperGrad)" stroke="#D9C9BC" stroke-width="2.5" />
+          <g stroke="#CFE4F5" stroke-width="3" stroke-linecap="round">
+            <path d="M154 374 H250" />
+            <path d="M154 392 H250" />
+            <path d="M154 410 H226" />
+          </g>
+          <path d="M262 352 L262 376 L238 352 Z" fill="#E7DED2" />
+        </g>
+
+        <!-- 左爪按纸 -->
+        <ellipse cx="156" cy="368" rx="17" ry="13" fill="url(#earGrad)" stroke="#4A4346" stroke-width="3" />
+
+        <!-- 笔 -->
+        <path d="M256 320 L214 384 L206 378 L248 314 Z" fill="url(#penGrad)" stroke="#B65E2A" stroke-width="1.5" stroke-linejoin="round" />
+        <path d="M214 384 L206 378 L200 390 Z" fill="#C9CDD2" stroke="#9AA0A6" stroke-width="1" stroke-linejoin="round" />
+        <path d="M248 314 L256 320 L262 311 L254 305 Z" fill="#FFD9BF" stroke="#B65E2A" stroke-width="1" stroke-linejoin="round" />
+
+        <!-- 右爪握笔 -->
+        <ellipse cx="246" cy="338" rx="17" ry="13" fill="url(#earGrad)" stroke="#4A4346" stroke-width="3" />
+      </g>
+
+      <!-- 闪光 -->
+      <g>
+        <path class="sparkle s1" d="M64 132 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4 z" fill="#FFD86B" />
+        <path class="sparkle s2" d="M338 168 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3 z" fill="#A8D8FF" />
+        <path class="sparkle s3" d="M78 380 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3 z" fill="#FFB3C7" />
+        <path class="sparkle s4" d="M326 356 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3 z" fill="#C4B5FD" />
+      </g>
+    </g>
+  </svg>
+
+  <div class="caption">
+    <div class="name">科研搭子 · 哈基米</div>
+    <div class="sub">RESEARCH BUDDY · HACHIMI</div>
+  </div>
+</body>
+</html>
