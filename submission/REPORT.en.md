@@ -49,7 +49,8 @@ The system is a **self-hosted agent loop** (DeepSeek via native `fetch`, zero SD
 - Implemented **atomic knowledge pages**: one claim per page, classified into claim/method/result/limitation/definition.
 - Implemented **page anchoring**: the model never reports page numbers (empirically 0/20 correct); instead, a verbatim quote is reverse-located to the real page with 100% hit rate.
 - Enforced the data iron law: no `paperId + page` anchor → not admitted to the knowledge base.
-- **Delivery**: wrote the submission documents the hackathon requires (project description, originality statement, evidence and reproducibility notes), recorded and edited the demo video, and compiled this technical report.
+- **SciencePal API analysis** (`docs/wyh/`): probed the platform's agent / run / stream endpoints and fixed module A's evidence contract — quotes are reliable, page numbers are not.
+- **Submission delivery**: authored the project-info (01), project-description (03b), originality statement (04) and video script, recorded the demo video, and compiled this report.
 
 ### 2.3 SUN Peng — Module B (Tool Library, ~2,600 lines)
 
