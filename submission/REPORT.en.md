@@ -28,7 +28,7 @@ The system is a **self-hosted agent loop** (DeepSeek via native `fetch`, zero SD
 
 ## 2. Team Contributions
 
-### WANG Xingshuai — Team Lead (Architecture / Skeleton)
+### Wang Xingshuai — Team Lead (Architecture / Skeleton)
 
 - Designed the **6-layer architecture** (entry → UI → orchestration → tools → services → state) and froze 6 interface contracts to allow three teammates to build modules in parallel without collision.
 - Built the **agent core**: main loop (`src/agent/loop.ts`), tool registry, system prompt, and the three-stage tool pipeline (`safeParse → validateInput → call`).
@@ -37,21 +37,23 @@ The system is a **self-hosted agent loop** (DeepSeek via native `fetch`, zero SD
 - **LLM layer**: DeepSeek client (streaming, retry, zero SDK), plus the full **offline replay** capability (`--record` / `--replay`) so the demo survives network failure.
 - **Engineering discipline**: 34 recorded decisions (`docs/DECISIONS.md`), automated rule checks, and the `npm run verify` gate (typecheck + rules + 377 tests).
 
-### XHH-Coco — Module A (Knowledge Base, ~2,200 lines)
+### Wan Yihui — Module A (Knowledge Base, ~2,200 lines)
 
 - Built `src/services/knowledge/`: extraction, local Markdown store, index, two-stage retrieval (keyword + LLM refine), ingest, and anchoring.
 - Implemented **atomic knowledge pages**: one claim per page, classified into claim/method/result/limitation/definition.
 - Implemented **page anchoring**: the model never reports page numbers (empirically 0/20 correct); instead, a verbatim quote is reverse-located to the real page with 100% hit rate.
 - Enforced the data iron law: no `paperId + page` anchor → not admitted to the knowledge base.
+- **SciencePal API analysis** (`docs/wyh/`): probed the platform's agent / run / stream endpoints and established the quote-not-page contract.
+- **Submission materials**: authored the project-info (01), project-description (03b), originality statement (04), and the video script.
 
-### aqiu — Module B (Tool Library, ~2,600 lines)
+### Sun Peng — Module B (Tool Library, ~2,600 lines)
 
 - Built `src/services/toolsynth/`: method extraction, tool generation, rendering, smoke testing, and a doctor report.
 - Implemented **method → executable tool**: papers' methods become typed, validated, callable tools (`buildTool` + zod schema + deterministic implementation).
 - Added cross-field validation (e.g. `success_rate` rejects `successes > total`) and fail-closed behavior (a failing tool never crashes the process).
 - Enforced the data iron law: no `evidencePage` → method not admitted to the tool library.
 
-### B1eberz — Module C (Skill Library)
+### Zhou Yixuan — Module C (Skill Library)
 
 - Built `src/services/skills/`: store, matching, manifest, generation, injection, and the seven-section structure.
 - Implemented **seven-section skills** (applicability / workflow / criteria / failure modes / parameters / evidence / don'ts) with consensus grading (`evidence:3` for practices supported by ≥3 papers).
